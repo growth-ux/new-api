@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-09-21-dm8-minimal-integration-design.md
+  s_7ab7d71e1264f6::t_fdba4ab84a71e7 1-2,7-239
+  s_7ab7d71e1264f6::t_25e5f308bde6c0 3-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d5ce9a043ca865bb82d91461ae6b3ddba1e73fa3",
+  "prompts": {},
+  "sessions": {
+    "s_7ab7d71e1264f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c469-e6e2-7293-930a-93f1c3719e83",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
