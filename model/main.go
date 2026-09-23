@@ -47,6 +47,13 @@ func initCol() {
 		commonKeyCol = `"key"`
 		commonTrueVal = "true"
 		commonFalseVal = "false"
+	} else if common.UsingMainDatabase(common.DatabaseTypeDM) {
+		// DM8 rejects backticks and reserves GROUP/KEY; it uses double quotes and
+		// 1/0 boolean literals (verified against the target build).
+		commonGroupCol = `"group"`
+		commonKeyCol = `"key"`
+		commonTrueVal = "1"
+		commonFalseVal = "0"
 	} else {
 		commonGroupCol = "`group`"
 		commonKeyCol = "`key`"
@@ -54,7 +61,7 @@ func initCol() {
 		commonFalseVal = "0"
 	}
 	switch common.LogDatabaseType() {
-	case common.DatabaseTypePostgreSQL:
+	case common.DatabaseTypePostgreSQL, common.DatabaseTypeDM:
 		logGroupCol = `"group"`
 		logKeyCol = `"key"`
 	default:
@@ -163,6 +170,11 @@ func chooseDB(envName string, isLog bool) (*gorm.DB, common.DatabaseType, error)
 			common.SysLog("SQL_DSN not set, using SQLite as database")
 			db, err := gorm.Open(sqlite.Open(common.SQLitePath), newGormConfig(true))
 			return db, common.DatabaseTypeSQLite, err
+		}
+		if strings.HasPrefix(dsn, "dm://") {
+			common.SysLog("using DM8 as database")
+			db, err := openDM8(dsn)
+			return db, common.DatabaseTypeDM, err
 		}
 		// Use MySQL
 		common.SysLog("using MySQL as database")
@@ -312,6 +324,9 @@ func is64BitIntegerType(dbType common.DatabaseType, dataType string) bool {
 		return normalized == "bigint" || normalized == "unsigned bigint" || normalized == "bigint unsigned"
 	case common.DatabaseTypePostgreSQL:
 		return normalized == "bigint" || normalized == "int8"
+	case common.DatabaseTypeDM:
+		// DM8 reports 64-bit integers as BIGINT via ColumnTypes (verified).
+		return normalized == "bigint"
 	default:
 		return false
 	}
@@ -373,6 +388,17 @@ func migrateDB() error {
 	)
 	if err != nil {
 		return err
+	}
+	if common.UsingMainDatabase(common.DatabaseTypeDM) {
+		// Seed the DM8 transaction-lock anchor used to serialize email writes.
+		if err := ensureDM8TransactionLocks(DB); err != nil {
+			return err
+		}
+		// GORM's generic CreateIndex drops the partial `where: deleted_at IS NULL`
+		// condition; restore DM8-equivalent soft-delete uniqueness for prefill groups.
+		if err := ensureDM8PrefillUniqueIndex(DB); err != nil {
+			return err
+		}
 	}
 	if err := InitializeUserAuthVersions(); err != nil {
 		return err

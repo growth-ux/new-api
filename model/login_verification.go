@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -29,9 +30,19 @@ func getUserVerificationState(tx *gorm.DB, userID int, forUpdate bool) (*UserVer
 		return nil, ErrUserSessionInvalid
 	}
 	var state UserVerificationState
+	// DM8 cannot alias a bare EXISTS predicate ("EXISTS (?) AS x" fails near AS);
+	// wrap it in CASE so the projected column is a plain integer, matching how the
+	// other dialects already project has_password.
+	existsProjection := "EXISTS (?) AS %s"
+	if common.UsingMainDatabase(common.DatabaseTypeDM) {
+		existsProjection = "CASE WHEN EXISTS (?) THEN 1 ELSE 0 END AS %s"
+	}
+	selectSQL := "id AS user_id, status, role, auth_version, CASE WHEN password <> '' THEN 1 ELSE 0 END AS has_password, " +
+		fmt.Sprintf(existsProjection, "has_two_fa") + ", " +
+		fmt.Sprintf(existsProjection, "two_fa_locked") + ", " +
+		fmt.Sprintf(existsProjection, "has_passkey")
 	query := tx.Model(&User{}).Select(
-		"id AS user_id, status, role, auth_version, CASE WHEN password <> '' THEN 1 ELSE 0 END AS has_password, "+
-			"EXISTS (?) AS has_two_fa, EXISTS (?) AS two_fa_locked, EXISTS (?) AS has_passkey",
+		selectSQL,
 		tx.Model(&TwoFA{}).Select("1").Where("user_id = ? AND is_enabled = ?", userID, true),
 		tx.Model(&TwoFA{}).Select("1").Where("user_id = ? AND is_enabled = ? AND locked_until > ?", userID, true, time.Now()),
 		tx.Model(&PasskeyCredential{}).Select("1").Where("user_id = ?", userID),

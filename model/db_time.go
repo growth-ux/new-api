@@ -12,6 +12,8 @@ func GetDBTimestamp() int64 {
 		err = DB.Raw("SELECT EXTRACT(EPOCH FROM NOW())::bigint").Scan(&ts).Error
 	case common.UsingMainDatabase(common.DatabaseTypeSQLite):
 		err = DB.Raw("SELECT strftime('%s','now')").Scan(&ts).Error
+	case common.UsingMainDatabase(common.DatabaseTypeDM):
+		ts, err = dm8DatabaseTimestamp(DB)
 	default:
 		err = DB.Raw("SELECT UNIX_TIMESTAMP()").Scan(&ts).Error
 	}

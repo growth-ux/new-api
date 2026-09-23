@@ -1,5 +1,8 @@
 # CLAUDE.md — Project Conventions for new-api
 
+始终用中文回复
+
+
 ## MANDATORY: Read AGENTS.md with the Read tool
 
 Do not treat `@AGENTS.md` as loaded. Claude Code does not reliably inline that import.

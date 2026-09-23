@@ -87,5 +87,8 @@ func sanitizeDBError(err error) error {
 	if errors.As(err, &sqliteErr) {
 		return fmt.Errorf("sqlite error %d", sqliteErr.Code())
 	}
+	if sanitized, ok := sanitizeDM8Error(err); ok {
+		return sanitized
+	}
 	return err
 }

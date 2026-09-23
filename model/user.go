@@ -404,6 +404,10 @@ func lockNormalizedEmail(tx *gorm.DB, email string) error {
 		if err := tx.Raw("SELECT id FROM users WHERE email = ? FOR UPDATE", email).Scan(&ids).Error; err != nil {
 			return err
 		}
+	case common.UsingMainDatabase(common.DatabaseTypeDM):
+		// DM8 has no advisory lock and no MySQL-style gap lock; serialize all
+		// normalized-email writers on a shared migration-seeded anchor row.
+		return lockDM8NormalizedEmail(tx)
 	}
 	return nil
 }
@@ -843,6 +847,7 @@ func (user *User) UpdateWithTx(tx *gorm.DB, updatePassword bool) error {
 		}
 	}
 	if err = tx.Model(&current).Omit(
+		"id",
 		"access_token",
 		"quota",
 		"used_quota",

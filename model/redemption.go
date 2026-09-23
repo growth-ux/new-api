@@ -144,7 +144,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 	redemption := &Redemption{}
 
 	keyCol := "`key`"
-	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) || common.UsingMainDatabase(common.DatabaseTypeDM) {
 		keyCol = `"key"`
 	}
 	common.RandomSleep()

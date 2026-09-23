@@ -10,7 +10,7 @@
 
 **Spec:** [已批准的设计](../specs/2026-09-21-dm8-minimal-integration-design.md)。用户在本会话中以“继续吧 写计划”批准进入计划编写。
 
-**Status:** 计划待评审；以下任务均未执行。本文的命令与断言是执行要求，不是已获得的验证结果。完整 DM8 版本、操作系统、ARM 位数、测试实例和官方驱动包仍是任务 1 的输入。
+**Status:** 已按“有真实 DM8 实例”的路径实施核心接入（任务 1—6 及任务 4/5 的必要运行时分支），并对真实 DM8（linux/arm64 容器）完成连接、生产迁移幂等、服务启动/重启、注册/登录/会话/token/渠道搜索等验证；详见文末“执行证据”。任务 7—8 的完整四库矩阵、发布版升级夹具、物理 ARM 主机运行与官方驱动评估尚未完成。
 
 ## Global Constraints
 
@@ -771,7 +771,43 @@ go list -m gorm.io/gorm gorm.io/driver/mysql gorm.io/driver/postgres
 
 ## 执行证据
 
-目前没有实施或运行证据。执行任务时在此追加实际记录，每条包括任务号、源码 commit、操作系统/架构、数据库完整版本、兼容参数、驱动版本/校验和、脱敏命令、实际结果及失败原因；未运行的项目保持任务复选框未勾选。
+### 环境与驱动（任务 1，已实测）
+
+- 宿主机：Darwin arm64，go1.25.14 darwin/arm64，CGO_ENABLED=1（宿主）；源码 commit `b9dddc29e50f7c1b3652bb4136728655e0fa795a`。
+- DM8 实例：Docker 容器 `dm8`（镜像 `qinchz/dm8-arm64`，**linux/arm64**），宿主映射 `127.0.0.1:5236`。版本 `version: 03134284094-20230927-203585-20067 Pack1`。
+- 实例参数（实测）：`COMPATIBLE_MODE=0`（none，非 MySQL 模式）、`CASE_SENSITIVE=0`、`UNICODE=1`(UTF-8)、`LENGTH_IN_CHAR=1`、`PAGE_SIZE=16`。
+- 驱动：`github.com/godoes/gorm-dameng v0.6.0`（纯 Go，内嵌 dm8 驱动，CGO_ENABLED=0 可用），来自本机离线 module cache（无网络，`proxy.golang.org` 超时）。GORM 仍为 v1.25.12，未升级 ORM。官方达梦驱动因无网络未能评估。
+- 隔离测试账号：`NEWAPI_TEST_APP`（schema 前缀 `NEWAPI_TEST_`，密码含特殊字符 `#`，DSN 中编码为 `%23`，实测连接与 `CURRENT_SCHEMA` 校验通过）。
+
+### 已实测通过的驱动缺口与修复
+
+- `JSON` 基类被 DM8 拒绝（`非法的基类名[JSON]`）→ 方言 `DataTypeOf` 将 json/longtext/mediumtext 映射为 `CLOB`；CLOB 实测可读写 nil/空串/中文/emoji/200KB 大字段。
+- `LENGTH_IN_CHAR=1` 下驱动按字节报告 VARCHAR 长度导致每次迁移重复 `ALTER MODIFY` → 启用 `VarcharSizeIsCharLength=true`（生成 `VARCHAR(n CHAR)`），二次迁移不再改列。
+- 时间列 DM 报告为 `DATETIME WITH TIME ZONE`，驱动 `TIMESTAMP WITH TIME ZONE` 触发重复 alter → `DataTypeOf` 对 `schema.Time` 返回 `DATETIME WITH TIME ZONE`（实测 DDL 接受且回读一致）。
+- `DEFAULT false/true` 被 DM 拒绝（`DEFAULT约束表达式无效`，-2670，导致**重启致命失败**）→ 覆写 `Explain` 将 bool 渲染为 `1/0`。
+- `UNIX_TIMESTAMP()` 在 COMPATIBLE_MODE=0 下不支持（-2207）→ `dm8DatabaseTimestamp` 用 `DATEDIFF(SS, TIMESTAMP'1970-01-01 00:00:00', SYS_EXTRACT_UTC(SYSTIMESTAMP))`，实测返回正确 UTC epoch。
+- 反引号标识符被 DM 拒绝，`group/key/trade_no/base_url/models` 需双引号 → `initCol` 及 channel/topup/subscription/redemption 的显式引用增加 DM 双引号分支；布尔字面量用 `1/0`（`= false` 报 -6105）。
+- `EXISTS (?) AS alias` 被 DM 拒绝（-2007）→ `login_verification.go` 对 DM 改用 `CASE WHEN EXISTS (?) THEN 1 ELSE 0 END AS alias`。
+- GORM `Updates` 对自增列发出 `SET "id"=?`，DM 禁止修改标识列（-2664）→ `EditWithTx` 的 `Omit` 增加 `id`。
+- 驱动 `GetIndexes` 将 `NON_UNIQUE` 误赋给 `UniqueValue`（唯一索引报告为非唯一）→ 唯一生产消费者 `optionsKeyIsUnique` 通过 `PrimaryKey()` 判定，实测 options 主键识别正确；未包装 Migrator（驱动内部对 `db.Migrator().(dameng.Migrator)` 做类型断言，包装会 panic）。
+- `OnConflict` 非主键唯一列：驱动退化为普通 INSERT，冲突报 -6625（重启时 authz 种子致命失败）→ 新增 `registerDM8Create`/`createDM8WithConflict`：先跑驱动原回调，仅在 -6625 时接管；DoNothing 单行置 RowsAffected=0、批量逐行重放；DoUpdates 用 INSERT 命中冲突后按冲突列 WHERE 执行 UPDATE。实测事务内 -6625 后可继续（DM 不因单语句错误回滚整个事务）。
+- 软删除部分唯一索引（`where: deleted_at IS NULL`）：GORM 通用 CreateIndex 忽略 Where → `ensureDM8PrefillUniqueIndex` 迁移后改建 `CASE WHEN deleted_at IS NULL THEN name ELSE NULL END` 表达式唯一索引；实测活跃重名被拒、软删后可重用、多条 NULL 并存；用 `USER_IND_COLUMNS.COLUMN_POSITION<0` 判定函数索引以保证幂等。
+
+### 真实实例验证结果
+
+- `go build ./...`（darwin/arm64，GOPROXY=off 只读模式）通过；`go vet ./model` 通过。
+- DM8 驱动 `CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build` 通过（纯 Go，ARM 兼容）。**完整 linux/arm64 二进制**因离线缓存缺少 `numcpus@v0.6.1`/`procfs@v0.15.1`（`common/` 监控相关的既有依赖，与 DM8 无关）未能交叉编译。
+- `model/dm8_integration_test.go` 6 个用例全部对真实 DM8 通过：StartupMigration（生产 `migrateDB` 连续两次幂等 + 锁锚点 + options 主键识别）、PrefillSoftDeleteUniqueness、ValueRoundTrip、RankingBuckets（FLOOR 分桶）、ConflictUpsert、ConflictDoNothing（含事务内 RowsAffected 契约）。
+- 既有回归：`go test ./model/... ./common/... ./service/authz/...`（SQLite，未设 TEST_DM_DSN，DM 用例 Skip）全部通过，无回归。
+- 服务实机运行（linux/arm64 容器中的 DM8，宿主 macOS 进程经 TCP 连接）：全新 schema 首次启动完成迁移并监听；注册用户（走 DM 邮箱锁锚点）成功；登录成功（会话/JWT）；创建 API token 成功并持久化；`/api/status` 返回 200；提升为 root 后 `SearchChannels` 双引号查询成功；**重启（第二次启动）无 -6625/-2670、无 FATAL，角色与数据持久化正确**。
+
+### 尚未验证 / 限制
+
+- 官方达梦 Go/GORM 驱动未评估（无网络）；仅验证社区 v0.6.0。
+- 未在物理 ARM 主机运行；ARM 验证通过 Apple Silicon 上的 linux/arm64 Docker 容器完成，完整 linux/arm64 应用二进制未交叉编译成功（缺既有无关依赖的离线缓存）。
+- MySQL/PostgreSQL/ClickHouse 真实实例矩阵、发布版旧库升级夹具、独立日志库与 DM/ClickHouse 组合（任务 7、8 的完整矩阵）未在本次运行。
+- **重要**：本实例 `CASE_SENSITIVE=0`，字符串比较大小写不敏感（实测 `key='mixed-key'` 命中 `'MiXeD-Key'`）。设计第 6.1 节指出该设置同时影响对象名与数据，会使 API key、token_hash、外部身份标识等的精确匹配变为大小写不敏感，存在安全/正确性影响。生产 DM8 实例建议按设计以 `CASE_SENSITIVE=1` 建库；若沿用 `CASE_SENSITIVE=0`，需显式接受该语义并复核所有依赖精确大小写比较的凭证路径。
+- 运行时逐端点全覆盖验证（除已测的注册/登录/会话/token/渠道搜索/排行榜/冲突写入外）未穷尽；其余查询按“实测失败再扩展”的原则处理。
 
 ## 执行交接
 

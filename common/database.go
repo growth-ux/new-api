@@ -7,6 +7,7 @@ const (
 	DatabaseTypeSQLite     DatabaseType = "sqlite"
 	DatabaseTypePostgreSQL DatabaseType = "postgres"
 	DatabaseTypeClickHouse DatabaseType = "clickhouse"
+	DatabaseTypeDM         DatabaseType = "dm"
 )
 
 var mainDatabaseType = DatabaseTypeSQLite

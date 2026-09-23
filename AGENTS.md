@@ -1,5 +1,7 @@
 # AGENTS.md — Project Conventions for new-api
 
+始终用中文回复
+
 DO NOT send optional commentary
 
 ## Overview

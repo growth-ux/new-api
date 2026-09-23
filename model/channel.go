@@ -397,14 +397,14 @@ func SearchChannels(keyword string, group string, model string, idSort bool, sor
 	var channels []*Channel
 	modelsCol := "`models`"
 
-	// 如果是 PostgreSQL，使用双引号
-	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+	// 如果是 PostgreSQL 或 DM8，使用双引号
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) || common.UsingMainDatabase(common.DatabaseTypeDM) {
 		modelsCol = `"models"`
 	}
 
 	baseURLCol := "`base_url`"
-	// 如果是 PostgreSQL，使用双引号
-	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+	// 如果是 PostgreSQL 或 DM8，使用双引号
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) || common.UsingMainDatabase(common.DatabaseTypeDM) {
 		baseURLCol = `"base_url"`
 	}
 
@@ -948,14 +948,14 @@ func SearchTags(keyword string, group string, model string, idSort bool) ([]*str
 	var tags []*string
 	modelsCol := "`models`"
 
-	// 如果是 PostgreSQL，使用双引号
-	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+	// 如果是 PostgreSQL 或 DM8，使用双引号
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) || common.UsingMainDatabase(common.DatabaseTypeDM) {
 		modelsCol = `"models"`
 	}
 
 	baseURLCol := "`base_url`"
-	// 如果是 PostgreSQL，使用双引号
-	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+	// 如果是 PostgreSQL 或 DM8，使用双引号
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) || common.UsingMainDatabase(common.DatabaseTypeDM) {
 		baseURLCol = `"base_url"`
 	}
 
