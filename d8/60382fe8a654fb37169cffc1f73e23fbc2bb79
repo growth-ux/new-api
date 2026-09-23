@@ -1,0 +1,62 @@
+.env.example
+  h_f75b2dd43abf29 28-32
+AGENTS.md
+  h_f75b2dd43abf29 3-4
+CLAUDE.md
+  h_f75b2dd43abf29 3-5
+common/database.go
+  h_f75b2dd43abf29 10
+dev_readme.md
+  h_f75b2dd43abf29 1-89
+docs/superpowers/plans/2026-09-21-dm8-minimal-integration.md
+  h_f75b2dd43abf29 13,774-810
+go.mod
+  h_f75b2dd43abf29 80,154,178
+go.sum
+  h_f75b2dd43abf29 1234-1235,1291-1292
+model/channel.go
+  h_f75b2dd43abf29 400-401,406-407,951-952,957-958
+model/db_time.go
+  h_f75b2dd43abf29 15-16
+model/dm8.go
+  h_f75b2dd43abf29 1-103
+model/dm8_compat.go
+  h_f75b2dd43abf29 1-79
+model/dm8_create.go
+  h_f75b2dd43abf29 1-165
+model/dm8_dialector.go
+  h_f75b2dd43abf29 1-138
+model/dm8_integration_test.go
+  h_f75b2dd43abf29 1-268
+model/dm8_migrator.go
+  h_f75b2dd43abf29 1-78
+model/gorm_logger.go
+  h_f75b2dd43abf29 90-92
+model/log.go
+  h_f75b2dd43abf29 615,618
+model/login_verification.go
+  h_f75b2dd43abf29 4,33-43,45
+model/main.go
+  h_f75b2dd43abf29 50-56,64,174-178,327-329,392-402
+model/redemption.go
+  h_f75b2dd43abf29 147
+model/subscription.go
+  h_f75b2dd43abf29 574,690
+model/topup.go
+  h_f75b2dd43abf29 151,182,244,455,533,605,665
+model/usedata_rankings.go
+  h_f75b2dd43abf29 52-53
+model/user.go
+  h_f75b2dd43abf29 407-410,850
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d860382fe8a654fb37169cffc1f73e23fbc2bb79",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
