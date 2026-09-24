@@ -1,0 +1,42 @@
+DockerfileStgDeps
+  s_5b762f91f76fcb::t_7a197da199153a 5
+  s_5b762f91f76fcb::t_d2d13cce1326a8 16-17
+  s_5b762f91f76fcb::t_d2ebc7c14ca009 1-4,6-15
+jenkins-deploy-stg.sh
+  s_5b762f91f76fcb::t_d2ebc7c14ca009 4
+  h_f75b2dd43abf29 10
+  s_edc06ebfce2ad4::t_b40821af97d5ca 1
+  h_f75b2dd43abf29 2-3,5-9,11-29
+DockerfileStg
+  s_5b762f91f76fcb::t_d2ebc7c14ca009 2,5,7-8
+  h_f75b2dd43abf29 1,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3fa4c5a10c24730867f7d8ff7dba3a6664e4dbc0",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_5b762f91f76fcb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d296-69c3-73c2-abda-d922b42e032f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    },
+    "s_edc06ebfce2ad4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cd76-1e2f-7b73-9777-81891fc3892f",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
