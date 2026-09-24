@@ -1,0 +1,25 @@
+DockerfileStg
+  s_edc06ebfce2ad4::t_04fe92b7552180 1-2
+  s_edc06ebfce2ad4::t_5243b96cdc6ea5 3-44
+stg.yaml
+  s_edc06ebfce2ad4::t_04fe92b7552180 1-2
+  s_edc06ebfce2ad4::t_e191c2dfe4fe9b 3-113
+DockerfileStgBak
+  s_edc06ebfce2ad4::t_46d631ee87795b 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "78a8062915e7557d0342b80486c59bb8a34dc356",
+  "prompts": {},
+  "sessions": {
+    "s_edc06ebfce2ad4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cd76-1e2f-7b73-9777-81891fc3892f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
