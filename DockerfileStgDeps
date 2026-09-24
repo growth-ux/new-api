@@ -1,0 +1,17 @@
+FROM oven/bun:1.4.0 AS web-deps
+
+WORKDIR /build/web
+COPY web/package.json web/bun.lock web/.npmrc ./
+RUN bun install --frozen-lockfile --network-concurrency=16
+
+
+FROM golang:1.26.1-alpine AS go-deps
+
+ENV CGO_ENABLED=0 GOWORK=off GOTOOLCHAIN=local GOOS=linux GOARCH=arm64
+
+WORKDIR /build
+COPY go.mod go.sum ./
+# relaykit is a local submodule referenced via replace.
+COPY relaykit/go.mod relaykit/go.sum ./relaykit/
+RUN go mod download \
+    && find /go/pkg/mod/cache/download -type f -name '*.zip' -delete
