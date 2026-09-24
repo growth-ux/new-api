@@ -1,6 +1,6 @@
-# stg 专用构建：docker buildx build -f DockerfileStg ...
-# 使用 --platform 指定与 stg 节点一致的平台。
-FROM oven/bun:1.4.0@sha256:5ff609364c049b54eb0ff560ec96319729a972078ef2c755d758f0c6ef89c2d6 AS builder
+# stg 专用构建：docker buildx build -f DockerfileStg --platform=linux/arm64 ...
+# 最终运行镜像基于国产操作系统 Kylin Server V10（arm64），必须使用 --platform=linux/arm64 构建。
+FROM swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/bun:1.4.0-arm64 AS builder
 
 WORKDIR /build/web
 COPY web/package.json web/bun.lock ./
@@ -10,12 +10,12 @@ COPY ./web ./
 COPY ./VERSION /build/VERSION
 RUN DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat /build/VERSION) bun run build
 
-FROM golang:1.26.1-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 AS builder2
+FROM swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/golang:1.26.1-alpine-arm64 AS builder2
 ENV GO111MODULE=on CGO_ENABLED=0 GOWORK=off
 
 ARG TARGETOS
 ARG TARGETARCH
-ENV GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64}
+ENV GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-arm64}
 ENV GOEXPERIMENT=greenteagc
 
 WORKDIR /build
@@ -30,12 +30,12 @@ COPY . .
 COPY --from=builder /build/web/dist ./web/dist
 RUN go build -ldflags "-s -w -X 'github.com/QuantumNous/new-api/common.Version=$(cat VERSION)'" -o new-api
 
-FROM debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a
+FROM swr.cofco-cn-beijing-1.cofco.com/public/kylin-server-10-arm64:latest
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates tzdata libasan8 wget \
-    && rm -rf /var/lib/apt/lists/* \
-    && update-ca-certificates
+# Kylin Server V10 基础镜像已内置 ca-certificates 与 tzdata；stg 走 K8s（探针用 httpGet），
+# 不需要 wget；new-api 为 CGO_ENABLED=0 静态二进制，运行时不依赖 libasan。
+# 构建环境无法访问 Kylin yum 仓库，故不做包安装，仅离线刷新 CA 证书。
+RUN update-ca-trust
 
 COPY --from=builder2 /build/new-api /
 COPY LICENSE NOTICE THIRD-PARTY-LICENSES.md /licenses/
