@@ -1,0 +1,14 @@
+DockerfileStg
+  h_f75b2dd43abf29 1-3,13,18,33,35-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d42f6f71aaf007c452d3ddea939f092e2a0d7b9c",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
