@@ -1,0 +1,45 @@
+# new-api STG 环境 K8s 清单（部署模式参考 ldw-api-gateway/stg.yaml）
+#
+# 【当前为最简验证版】未注入任何配置，new-api 会用内置 SQLite
+# （数据存于容器 /data，Pod 重启会丢失），仅用于验证 Jenkins → K8s 部署链路是否打通。
+# 验证通过后，再补 SQL_DSN（连 DM8）、SESSION_SECRET 等配置：用 env 明文 或 Secret+envFrom。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: new-api-stg
+  namespace: server
+  labels:
+    app: new-api-stg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: new-api-stg
+  template:
+    metadata:
+      labels:
+        app: new-api-stg
+    spec:
+      containers:
+        - name: new-api-stg
+          # 占位镜像，实际 tag 由 jenkins-deploy-stg.sh 里的 sed 替换后 apply
+          image: swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/stg/ldw-new-api:latest
+          ports:
+            - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: new-api-stg
+  namespace: server
+  labels:
+    app: new-api-stg
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 33003   # 若与已有服务冲突，改成其它空闲端口（gateway stg 用 33002）
+  selector:
+    app: new-api-stg
