@@ -182,7 +182,7 @@ func UpdatePasskeyDomainOptions(values map[string]string, preview bool, confirma
 			// MySQL may compare/group text case-insensitively. Select only
 			// candidate RP values, then count exact bytes without credential IDs.
 			rows, err := tx.Model(&PasskeyCredential{}).Select("rp_id").
-				Where("rp_id IS NULL OR rp_id = ? OR rp_id IN ?", "", change.RemovedRPIDs).Rows()
+				Where(quoteModelIdentifier(DB, "rp_id")+" IS NULL OR "+quoteModelIdentifier(DB, "rp_id")+" = ? OR "+quoteModelIdentifier(DB, "rp_id")+" IN ?", "", change.RemovedRPIDs).Rows()
 			if err != nil {
 				return err
 			}

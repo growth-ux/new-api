@@ -71,17 +71,17 @@ func UpsertSystemInstance(nodeName string, info any, startedAt int64, lastSeenAt
 
 func ListSystemInstances() ([]*SystemInstance, error) {
 	var instances []*SystemInstance
-	err := DB.Order("last_seen_at desc").Find(&instances).Error
+	err := DB.Order(quoteModelIdentifier(DB, "last_seen_at") + " desc").Find(&instances).Error
 	return instances, err
 }
 
 func DeleteStaleSystemInstances(now int64) (int64, error) {
-	result := DB.Where("last_seen_at < ?", now-SystemInstanceStaleAfterSeconds).Delete(&SystemInstance{})
+	result := DB.Where(quoteModelIdentifier(DB, "last_seen_at")+" < ?", now-SystemInstanceStaleAfterSeconds).Delete(&SystemInstance{})
 	return result.RowsAffected, result.Error
 }
 
 func DeleteStaleSystemInstance(nodeName string, now int64) (bool, error) {
-	result := DB.Where("node_name = ? AND last_seen_at < ?", nodeName, now-SystemInstanceStaleAfterSeconds).Delete(&SystemInstance{})
+	result := DB.Where(quoteModelIdentifier(DB, "node_name")+" = ? AND "+quoteModelIdentifier(DB, "last_seen_at")+" < ?", nodeName, now-SystemInstanceStaleAfterSeconds).Delete(&SystemInstance{})
 	return result.RowsAffected > 0, result.Error
 }
 

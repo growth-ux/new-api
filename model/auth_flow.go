@@ -110,7 +110,7 @@ func ValidateAuthSessionWithTx(tx *gorm.DB, identity AuthSessionIdentity) error 
 		return ErrUserSessionInactive
 	}
 	var session UserSession
-	if err := lockForUpdate(tx).Where("sid = ? AND user_id = ?", identity.SessionID, identity.UserID).First(&session).Error; err != nil {
+	if err := lockForUpdate(tx).Where(quoteModelIdentifier(DB, "sid")+" = ? AND "+quoteModelIdentifier(DB, "user_id")+" = ?", identity.SessionID, identity.UserID).First(&session).Error; err != nil {
 		return err
 	}
 	if session.Status != UserSessionStatusActive || session.RevokedAt != 0 || session.ExpiresAt <= time.Now().Unix() || session.UserAuthVersion != identity.UserAuthVersion || session.Version != identity.SessionVersion {
@@ -120,18 +120,18 @@ func ValidateAuthSessionWithTx(tx *gorm.DB, identity AuthSessionIdentity) error 
 }
 
 func applyAuthFlowMatch(query *gorm.DB, token string, match AuthFlowMatch) *gorm.DB {
-	query = query.Where("token_hash = ? AND purpose = ?", authFlowTokenHash(token), match.Purpose)
+	query = query.Where(quoteModelIdentifier(DB, "token_hash")+" = ? AND "+quoteModelIdentifier(DB, "purpose")+" = ?", authFlowTokenHash(token), match.Purpose)
 	if match.Provider != "" {
-		query = query.Where("provider = ?", match.Provider)
+		query = query.Where(quoteModelIdentifier(DB, "provider")+" = ?", match.Provider)
 	}
 	if match.Intent != "" {
-		query = query.Where("intent = ?", match.Intent)
+		query = query.Where(quoteModelIdentifier(DB, "intent")+" = ?", match.Intent)
 	}
 	if match.UserId != 0 {
-		query = query.Where("user_id = ?", match.UserId)
+		query = query.Where(quoteModelIdentifier(DB, "user_id")+" = ?", match.UserId)
 	}
 	if match.SessionId != "" {
-		query = query.Where("session_id = ?", match.SessionId)
+		query = query.Where(quoteModelIdentifier(DB, "session_id")+" = ?", match.SessionId)
 	}
 	return query
 }
@@ -247,7 +247,7 @@ func ConsumeAuthFlowWithAction(token string, match AuthFlowMatch, action func(tx
 		// SQLite cannot reliably upgrade two concurrent deferred read transactions.
 		now := time.Now()
 		result := applyAuthFlowMatch(tx.Model(&AuthFlow{}), token, match).
-			Where("consumed_at IS NULL AND expires_at > ?", now).
+			Where(quoteModelIdentifier(DB, "consumed_at")+" IS NULL AND "+quoteModelIdentifier(DB, "expires_at")+" > ?", now).
 			Update("consumed_at", now)
 		if result.Error != nil {
 			return result.Error
@@ -283,6 +283,8 @@ func ConsumeAuthFlowWithAction(token string, match AuthFlowMatch, action func(tx
 
 func DeleteExpiredAuthFlows(now time.Time) error {
 	cutoff := now.Add(-AuthFlowDefaultCleanupRetention)
-	return DB.Where("expires_at < ? OR (consumed_at IS NOT NULL AND consumed_at < ?)", cutoff, cutoff).
+	expiresAt := quoteModelIdentifier(DB, "expires_at")
+	consumedAt := quoteModelIdentifier(DB, "consumed_at")
+	return DB.Where(fmt.Sprintf("%s < ? OR (%s IS NOT NULL AND %s < ?)", expiresAt, consumedAt, consumedAt), cutoff, cutoff).
 		Delete(&AuthFlow{}).Error
 }

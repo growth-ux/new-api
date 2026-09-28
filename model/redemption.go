@@ -46,7 +46,7 @@ func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total 
 	}
 
 	// 获取分页数据
-	err = tx.Order("id desc").Limit(num).Offset(startIdx).Find(&redemptions).Error
+	err = tx.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&redemptions).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -75,9 +75,9 @@ func SearchRedemptions(keyword string, status string, startIdx int, num int) (re
 
 	if keyword != "" {
 		if id, err := strconv.Atoi(keyword); err == nil {
-			query = query.Where("id = ? OR name LIKE ?", id, keyword+"%")
+			query = query.Where(quoteModelIdentifier(DB, "id")+" = ? OR "+quoteModelIdentifier(DB, "name")+" LIKE ?", id, keyword+"%")
 		} else {
-			query = query.Where("name LIKE ?", keyword+"%")
+			query = query.Where(quoteModelIdentifier(DB, "name")+" LIKE ?", keyword+"%")
 		}
 	}
 
@@ -86,20 +86,20 @@ func SearchRedemptions(keyword string, status string, startIdx int, num int) (re
 		switch status {
 		case "expired":
 			query = query.Where(
-				"status = ? AND expired_time != 0 AND expired_time < ?",
+				quoteModelIdentifier(DB, "status")+" = ? AND "+quoteModelIdentifier(DB, "expired_time")+" != 0 AND "+quoteModelIdentifier(DB, "expired_time")+" < ?",
 				common.RedemptionCodeStatusEnabled,
 				now,
 			)
 		case strconv.Itoa(common.RedemptionCodeStatusEnabled):
 			query = query.Where(
-				"status = ? AND (expired_time = 0 OR expired_time >= ?)",
+				quoteModelIdentifier(DB, "status")+" = ? AND ("+quoteModelIdentifier(DB, "expired_time")+" = 0 OR "+quoteModelIdentifier(DB, "expired_time")+" >= ?)",
 				common.RedemptionCodeStatusEnabled,
 				now,
 			)
 		case strconv.Itoa(common.RedemptionCodeStatusDisabled):
-			query = query.Where("status = ?", common.RedemptionCodeStatusDisabled)
+			query = query.Where(quoteModelIdentifier(DB, "status")+" = ?", common.RedemptionCodeStatusDisabled)
 		case strconv.Itoa(common.RedemptionCodeStatusUsed):
-			query = query.Where("status = ?", common.RedemptionCodeStatusUsed)
+			query = query.Where(quoteModelIdentifier(DB, "status")+" = ?", common.RedemptionCodeStatusUsed)
 		}
 	}
 
@@ -111,7 +111,7 @@ func SearchRedemptions(keyword string, status string, startIdx int, num int) (re
 	}
 
 	// Get paginated data
-	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&redemptions).Error
+	err = query.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&redemptions).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -130,7 +130,7 @@ func GetRedemptionById(id int) (*Redemption, error) {
 	}
 	redemption := Redemption{Id: id}
 	var err error = nil
-	err = DB.First(&redemption, "id = ?", id).Error
+	err = DB.First(&redemption, quoteModelIdentifier(DB, "id")+" = ?", id).Error
 	return &redemption, err
 }
 
@@ -163,7 +163,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		// enabled -> used may credit quota, so a concurrent redeem of the
 		// same code loses here even without a row lock (e.g. on SQLite).
 		result := tx.Model(&Redemption{}).
-			Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
+			Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "status")+" = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
 			Updates(map[string]any{
 				"redeemed_time": common.GetTimestamp(),
 				"status":        common.RedemptionCodeStatusUsed,
@@ -236,7 +236,7 @@ func DeleteRedemptionById(id int) (err error) {
 
 func DeleteInvalidRedemptions() (int64, error) {
 	now := common.GetTimestamp()
-	result := DB.Where("status IN ? OR (status = ? AND expired_time != 0 AND expired_time < ?)", []int{common.RedemptionCodeStatusUsed, common.RedemptionCodeStatusDisabled}, common.RedemptionCodeStatusEnabled, now).Delete(&Redemption{})
+	result := DB.Where(quoteModelIdentifier(DB, "status")+" IN ? OR ("+quoteModelIdentifier(DB, "status")+" = ? AND "+quoteModelIdentifier(DB, "expired_time")+" != 0 AND "+quoteModelIdentifier(DB, "expired_time")+" < ?)", []int{common.RedemptionCodeStatusUsed, common.RedemptionCodeStatusDisabled}, common.RedemptionCodeStatusEnabled, now).Delete(&Redemption{})
 	return result.RowsAffected, result.Error
 }
 
@@ -250,6 +250,6 @@ func BatchDeleteRedemptions(ids []int) (int64, error) {
 			return 0, errors.New("redemption IDs must be positive")
 		}
 	}
-	result := DB.Where("id IN ?", ids).Delete(&Redemption{})
+	result := DB.Where(quoteModelIdentifier(DB, "id")+" IN ?", ids).Delete(&Redemption{})
 	return result.RowsAffected, result.Error
 }

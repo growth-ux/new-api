@@ -35,18 +35,18 @@ func GetFlowQuotaData(startTime int64, endTime int64, username string, userID in
 
 func flowQuotaBaseQuery(startTime int64, endTime int64) *gorm.DB {
 	query := DB.Table("quota_data").
-		Where("use_group <> ''").
-		Where("created_at >= ? and created_at <= ?", startTime, endTime)
+		Where(quoteModelIdentifier(DB, "use_group")+" <> ''").
+		Where(quoteModelIdentifier(DB, "created_at")+" >= ? and "+quoteModelIdentifier(DB, "created_at")+" <= ?", startTime, endTime)
 	return query
 }
 
 func getSelfFlowQuotaData(startTime int64, endTime int64, userID int) ([]*FlowQuotaData, error) {
 	rows := make([]*FlowQuotaData, 0)
 	err := flowQuotaBaseQuery(startTime, endTime).
-		Select("token_id, use_group, model_name, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
-		Where("user_id = ?", userID).
-		Group("token_id, use_group, model_name").
-		Order("quota DESC").
+		Select(quotaDataSummarySelect("token_id", "use_group", "model_name")).
+		Where(quoteModelIdentifier(DB, "user_id")+" = ?", userID).
+		Group(quoteModelIdentifiers(DB, "token_id", "use_group", "model_name")).
+		Order(quoteModelIdentifier(DB, "quota") + " DESC").
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
@@ -57,13 +57,13 @@ func getSelfFlowQuotaData(startTime int64, endTime int64, userID int) ([]*FlowQu
 func getAdminFlowQuotaData(startTime int64, endTime int64, username string) ([]*FlowQuotaData, error) {
 	rows := make([]*FlowQuotaData, 0)
 	query := flowQuotaBaseQuery(startTime, endTime).
-		Select("user_id, username, use_group, model_name, channel_id, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used")
+		Select(quotaDataSummarySelect("user_id", "username", "use_group", "model_name", "channel_id"))
 	if username != "" {
-		query = query.Where("username = ?", username)
+		query = query.Where(quoteModelIdentifier(DB, "username")+" = ?", username)
 	}
 	err := query.
-		Group("user_id, username, use_group, model_name, channel_id").
-		Order("quota DESC").
+		Group(quoteModelIdentifiers(DB, "user_id", "username", "use_group", "model_name", "channel_id")).
+		Order(quoteModelIdentifier(DB, "quota") + " DESC").
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
@@ -74,13 +74,13 @@ func getAdminFlowQuotaData(startTime int64, endTime int64, username string) ([]*
 func getRootFlowQuotaData(startTime int64, endTime int64, username string) ([]*FlowQuotaData, error) {
 	rows := make([]*FlowQuotaData, 0)
 	query := flowQuotaBaseQuery(startTime, endTime).
-		Select("user_id, username, node_name, token_id, use_group, model_name, channel_id, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used")
+		Select(quotaDataSummarySelect("user_id", "username", "node_name", "token_id", "use_group", "model_name", "channel_id"))
 	if username != "" {
-		query = query.Where("username = ?", username)
+		query = query.Where(quoteModelIdentifier(DB, "username")+" = ?", username)
 	}
 	err := query.
-		Group("user_id, username, node_name, token_id, use_group, model_name, channel_id").
-		Order("quota DESC").
+		Group(quoteModelIdentifiers(DB, "user_id", "username", "node_name", "token_id", "use_group", "model_name", "channel_id")).
+		Order(quoteModelIdentifier(DB, "quota") + " DESC").
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func fillFlowTokenNames(rows []*FlowQuotaData) error {
 		Id   int    `gorm:"column:id"`
 		Name string `gorm:"column:name"`
 	}
-	if err := DB.Model(&Token{}).Select("id, name").Where("id IN ?", tokenIDs).Find(&tokens).Error; err != nil {
+	if err := DB.Model(&Token{}).Select(quoteModelIdentifiers(DB, "id", "name")).Where(quoteModelIdentifier(DB, "id")+" IN ?", tokenIDs).Find(&tokens).Error; err != nil {
 		return err
 	}
 	tokenNameByID := make(map[int]string, len(tokens))
@@ -158,7 +158,7 @@ func fillFlowChannelNames(rows []*FlowQuotaData) error {
 			Id   int    `gorm:"column:id"`
 			Name string `gorm:"column:name"`
 		}
-		if err := DB.Table("channels").Select("id, name").Where("id IN ?", channelIDs).Find(&channels).Error; err != nil {
+		if err := DB.Table("channels").Select(quoteModelIdentifiers(DB, "id", "name")).Where(quoteModelIdentifier(DB, "id")+" IN ?", channelIDs).Find(&channels).Error; err != nil {
 			return err
 		}
 		for _, channel := range channels {

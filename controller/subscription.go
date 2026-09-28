@@ -36,7 +36,7 @@ func GetSubscriptionPlans(c *gin.Context) {
 	}
 
 	var plans []model.SubscriptionPlan
-	if err := model.DB.Where("enabled = ?", true).Order("sort_order desc, id desc").Find(&plans).Error; err != nil {
+	if err := model.DB.Where(model.QuoteSQLIdentifier(model.DB, "enabled")+" = ?", true).Order(model.QuoteSQLIdentifier(model.DB, "sort_order") + " desc, " + model.QuoteSQLIdentifier(model.DB, "id") + " desc").Find(&plans).Error; err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -120,7 +120,7 @@ func SubscriptionRequestBalancePay(c *gin.Context) {
 
 func AdminListSubscriptionPlans(c *gin.Context) {
 	var plans []model.SubscriptionPlan
-	if err := model.DB.Order("sort_order desc, id desc").Find(&plans).Error; err != nil {
+	if err := model.DB.Order(model.QuoteSQLIdentifier(model.DB, "sort_order") + " desc, " + model.QuoteSQLIdentifier(model.DB, "id") + " desc").Find(&plans).Error; err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -308,7 +308,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 		if req.Plan.AllowWalletOverflow != nil {
 			updateMap["allow_wallet_overflow"] = *req.Plan.AllowWalletOverflow
 		}
-		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {
+		if err := tx.Model(&model.SubscriptionPlan{}).Where(model.QuoteSQLIdentifier(model.DB, "id")+" = ?", id).Updates(updateMap).Error; err != nil {
 			return err
 		}
 		return nil
@@ -340,7 +340,7 @@ func AdminUpdateSubscriptionPlanStatus(c *gin.Context) {
 		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
-	if err := model.DB.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Update("enabled", *req.Enabled).Error; err != nil {
+	if err := model.DB.Model(&model.SubscriptionPlan{}).Where(model.QuoteSQLIdentifier(model.DB, "id")+" = ?", id).Update("enabled", *req.Enabled).Error; err != nil {
 		common.ApiError(c, err)
 		return
 	}

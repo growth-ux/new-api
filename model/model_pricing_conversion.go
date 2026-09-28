@@ -183,8 +183,8 @@ func PreviewModelPricingConversion(name string, draft PricingValues) (*ModelPric
 	// Inspect non-secret routing metadata so aliases cannot disguise a special
 	// settlement path as an ordinary text model.
 	var channels []Channel
-	candidates := DB.Model(&Ability{}).Select("channel_id").Where("model = ?", name)
-	if err := DB.Select("type", "status", "models", "model_mapping").Where("id IN (?)", candidates).Find(&channels).Error; err != nil {
+	candidates := DB.Model(&Ability{}).Select("channel_id").Where(quoteModelIdentifier(DB, "model")+" = ?", name)
+	if err := DB.Select("type", "status", "models", "model_mapping").Where(quoteModelIdentifier(DB, "id")+" IN (?)", candidates).Find(&channels).Error; err != nil {
 		return nil, err
 	}
 	names := []string{name}
@@ -241,8 +241,8 @@ func PreviewModelPricingConversion(name string, draft PricingValues) (*ModelPric
 	}
 	var metadata []Model
 	if err := DB.Select("model_name", "name_rule", "endpoints").
-		Where("model_name IN ? OR name_rule <> ?", names, NameRuleExact).
-		Where("endpoints <> ?", "").Find(&metadata).Error; err != nil {
+		Where(quoteModelIdentifier(DB, "model_name")+" IN ? OR "+quoteModelIdentifier(DB, "name_rule")+" <> ?", names, NameRuleExact).
+		Where(quoteModelIdentifier(DB, "endpoints")+" <> ?", "").Find(&metadata).Error; err != nil {
 		return nil, err
 	}
 	for _, entry := range metadata {

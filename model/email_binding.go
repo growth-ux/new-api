@@ -138,7 +138,7 @@ func CompleteEmailBinding(identity AuthSessionIdentity, token, email, newCode, o
 		if err := ensureEmailAvailableWithTx(tx, state.Email, identity.UserID); err != nil {
 			return err
 		}
-		if err := tx.Model(&User{}).Where("id = ?", identity.UserID).Update("email", state.Email).Error; err != nil {
+		if err := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", identity.UserID).Update("email", state.Email).Error; err != nil {
 			return err
 		}
 		return tx.Model(flow).Update("consumed_at", time.Now()).Error
@@ -155,8 +155,8 @@ func lockEmailBindingWithTx(tx *gorm.DB, identity AuthSessionIdentity, token str
 	// deferred read transaction. A no-op update also locks the row on MySQL and
 	// PostgreSQL; do not interpret dialect-dependent RowsAffected as success.
 	if err := applyAuthFlowMatch(tx.Model(&AuthFlow{}), token, match).
-		Where("consumed_at IS NULL AND expires_at > ?", time.Now()).
-		UpdateColumn("payload", gorm.Expr("payload")).Error; err != nil {
+		Where(quoteModelIdentifier(DB, "consumed_at")+" IS NULL AND "+quoteModelIdentifier(DB, "expires_at")+" > ?", time.Now()).
+		UpdateColumn("payload", gorm.Expr(quoteModelIdentifier(tx, "payload"))).Error; err != nil {
 		return nil, nil, err
 	}
 	var flow AuthFlow

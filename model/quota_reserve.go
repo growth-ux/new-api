@@ -7,6 +7,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type cacheQuotaResult int
@@ -110,7 +111,7 @@ func persistUserQuotaDelta(id int, delta int) error {
 		addNewRecord(BatchUpdateTypeUserQuota, id, delta)
 		return nil
 	}
-	result := DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", delta))
+	result := DB.Model(&User{}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).Update("quota", gorm.Expr(quoteModelIdentifier(DB, "quota")+" + ?", delta))
 	if result.Error != nil {
 		return result.Error
 	}
@@ -125,10 +126,10 @@ func persistTokenQuotaDelta(id int, delta int) error {
 		addNewRecord(BatchUpdateTypeTokenQuota, id, delta)
 		return nil
 	}
-	result := DB.Model(&Token{}).Where("id = ?", id).Updates(
+	result := DB.Model(&Token{}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).Updates(
 		map[string]any{
-			"remain_quota":  gorm.Expr("remain_quota + ?", delta),
-			"used_quota":    gorm.Expr("used_quota - ?", delta),
+			"remain_quota":  gorm.Expr(quoteModelIdentifier(DB, "remain_quota")+" + ?", delta),
+			"used_quota":    gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" - ?", delta),
 			"accessed_time": common.GetTimestamp(),
 		},
 	)
@@ -143,17 +144,17 @@ func persistTokenQuotaDelta(id int, delta int) error {
 
 func reserveUserQuotaDB(id int, quota int) (bool, error) {
 	result := DB.Model(&User{}).
-		Where("id = ? AND quota >= ?", id, quota).
-		Update("quota", gorm.Expr("quota - ?", quota))
+		Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "quota")+" >= ?", id, quota).
+		Update("quota", gorm.Expr(quoteModelIdentifier(DB, "quota")+" - ?", quota))
 	return result.RowsAffected == 1, result.Error
 }
 
 func reserveTokenQuotaDB(id int, quota int) (bool, error) {
 	result := DB.Model(&Token{}).
-		Where("id = ? AND remain_quota >= ?", id, quota).
+		Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "remain_quota")+" >= ?", id, quota).
 		Updates(map[string]any{
-			"remain_quota":  gorm.Expr("remain_quota - ?", quota),
-			"used_quota":    gorm.Expr("used_quota + ?", quota),
+			"remain_quota":  gorm.Expr(quoteModelIdentifier(DB, "remain_quota")+" - ?", quota),
+			"used_quota":    gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" + ?", quota),
 			"accessed_time": common.GetTimestamp(),
 		})
 	return result.RowsAffected == 1, result.Error

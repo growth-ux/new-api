@@ -20,12 +20,15 @@ type RankingQuotaBucket struct {
 
 func GetRankingQuotaTotals(startTime int64, endTime int64) ([]RankingQuotaTotal, error) {
 	var rows []RankingQuotaTotal
+	modelName := quoteModelIdentifier(DB, "model_name")
+	tokenUsed := quoteModelIdentifier(DB, "token_used")
+	totalTokens := quoteModelIdentifier(DB, "total_tokens")
 	query := DB.Table("quota_data").
-		Select("model_name, sum(token_used) as total_tokens").
-		Where("model_name <> ''").
-		Group("model_name").
-		Having("sum(token_used) > 0").
-		Order("total_tokens DESC")
+		Select(fmt.Sprintf("%s, sum(%s) as %s", modelName, tokenUsed, totalTokens)).
+		Where(modelName + " <> ''").
+		Group(modelName).
+		Having("sum(" + tokenUsed + ") > 0").
+		Order(totalTokens + " DESC")
 	query = applyRankingQuotaTimeRange(query, startTime, endTime)
 	err := query.Find(&rows).Error
 	return rows, err
@@ -37,31 +40,37 @@ func GetRankingQuotaBuckets(startTime int64, endTime int64, bucketSize int64) ([
 	}
 	bucketExpr := rankingBucketExpr(bucketSize)
 	var rows []RankingQuotaBucket
+	modelName := quoteModelIdentifier(DB, "model_name")
+	tokenUsed := quoteModelIdentifier(DB, "token_used")
+	bucket := quoteModelIdentifier(DB, "bucket")
+	tokens := quoteModelIdentifier(DB, "tokens")
 	query := DB.Table("quota_data").
-		Select(fmt.Sprintf("model_name, %s as bucket, sum(token_used) as tokens", bucketExpr)).
-		Where("model_name <> ''").
-		Group(fmt.Sprintf("model_name, %s", bucketExpr)).
-		Having("sum(token_used) > 0").
-		Order("bucket ASC")
+		Select(fmt.Sprintf("%s, %s as %s, sum(%s) as %s", modelName, bucketExpr, bucket, tokenUsed, tokens)).
+		Where(modelName + " <> ''").
+		Group(fmt.Sprintf("%s, %s", modelName, bucketExpr)).
+		Having("sum(" + tokenUsed + ") > 0").
+		Order(bucket + " ASC")
 	query = applyRankingQuotaTimeRange(query, startTime, endTime)
 	err := query.Find(&rows).Error
 	return rows, err
 }
 
 func rankingBucketExpr(bucketSize int64) string {
+	createdAt := quoteModelIdentifier(DB, "created_at")
 	if common.UsingMainDatabase(common.DatabaseTypeMySQL) ||
 		common.UsingMainDatabase(common.DatabaseTypeDM) {
-		return fmt.Sprintf("FLOOR(created_at / %d) * %d", bucketSize, bucketSize)
+		return fmt.Sprintf("FLOOR(%s / %d) * %d", createdAt, bucketSize, bucketSize)
 	}
-	return fmt.Sprintf("(created_at / %d) * %d", bucketSize, bucketSize)
+	return fmt.Sprintf("(%s / %d) * %d", createdAt, bucketSize, bucketSize)
 }
 
 func applyRankingQuotaTimeRange(query *gorm.DB, startTime int64, endTime int64) *gorm.DB {
+	createdAt := quoteModelIdentifier(query, "created_at")
 	if startTime > 0 {
-		query = query.Where("created_at >= ?", startTime)
+		query = query.Where(createdAt+" >= ?", startTime)
 	}
 	if endTime > 0 {
-		query = query.Where("created_at <= ?", endTime)
+		query = query.Where(createdAt+" <= ?", endTime)
 	}
 	return query
 }

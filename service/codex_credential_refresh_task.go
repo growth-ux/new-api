@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 
 	"github.com/bytedance/gopkg/util/gopool"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -69,12 +70,12 @@ func runCodexCredentialAutoRefreshOnce() {
 		var channels []*model.Channel
 		err := model.DB.
 			Select("id", "name", "key", "status", "channel_info").
-			Where("type = ? AND (status = ? OR status = ?)",
-				constant.ChannelTypeCodex,
-				common.ChannelStatusEnabled,
-				common.ChannelStatusAutoDisabled,
-			).
-			Order("id asc").
+			Where(clause.Eq{Column: clause.Column{Name: "type"}, Value: constant.ChannelTypeCodex}).
+			Where(clause.Or(
+				clause.Eq{Column: clause.Column{Name: "status"}, Value: common.ChannelStatusEnabled},
+				clause.Eq{Column: clause.Column{Name: "status"}, Value: common.ChannelStatusAutoDisabled},
+			)).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "id"}}).
 			Limit(codexCredentialRefreshBatchSize).
 			Offset(offset).
 			Find(&channels).Error

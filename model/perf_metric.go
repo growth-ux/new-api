@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -26,9 +28,26 @@ func (PerfMetric) TableName() string {
 	return "perf_metrics"
 }
 
+func perfMetricSummarySelect(includeBucket bool) string {
+	columns := []string{quoteModelIdentifier(DB, "model_name")}
+	if includeBucket {
+		columns = append(columns, quoteModelIdentifier(DB, "bucket_ts"))
+	}
+	for _, name := range []string{"request_count", "success_count", "total_latency_ms", "output_tokens", "generation_ms"} {
+		column := quoteModelIdentifier(DB, name)
+		columns = append(columns, fmt.Sprintf("SUM(%s) AS %s", column, column))
+	}
+	return strings.Join(columns, ", ")
+}
+
 func UpsertPerfMetric(metric *PerfMetric) error {
 	if metric == nil || metric.RequestCount == 0 {
 		return nil
+	}
+	add := func(name string, value int64) clause.Expr {
+		column := quoteModelIdentifier(DB, name)
+		table := quoteModelIdentifier(DB, "perf_metrics")
+		return gorm.Expr(table+"."+column+" + ?", value)
 	}
 	return DB.Clauses(clause.OnConflict{
 		Columns: []clause.Column{
@@ -37,25 +56,26 @@ func UpsertPerfMetric(metric *PerfMetric) error {
 			{Name: "bucket_ts"},
 		},
 		DoUpdates: clause.Assignments(map[string]any{
-			"request_count":    gorm.Expr("perf_metrics.request_count + ?", metric.RequestCount),
-			"success_count":    gorm.Expr("perf_metrics.success_count + ?", metric.SuccessCount),
-			"total_latency_ms": gorm.Expr("perf_metrics.total_latency_ms + ?", metric.TotalLatencyMs),
-			"ttft_sum_ms":      gorm.Expr("perf_metrics.ttft_sum_ms + ?", metric.TtftSumMs),
-			"ttft_count":       gorm.Expr("perf_metrics.ttft_count + ?", metric.TtftCount),
-			"output_tokens":    gorm.Expr("perf_metrics.output_tokens + ?", metric.OutputTokens),
-			"generation_ms":    gorm.Expr("perf_metrics.generation_ms + ?", metric.GenerationMs),
+			"request_count":    add("request_count", metric.RequestCount),
+			"success_count":    add("success_count", metric.SuccessCount),
+			"total_latency_ms": add("total_latency_ms", metric.TotalLatencyMs),
+			"ttft_sum_ms":      add("ttft_sum_ms", metric.TtftSumMs),
+			"ttft_count":       add("ttft_count", metric.TtftCount),
+			"output_tokens":    add("output_tokens", metric.OutputTokens),
+			"generation_ms":    add("generation_ms", metric.GenerationMs),
 		}),
 	}).Create(metric).Error
 }
 
 func GetPerfMetrics(modelName string, group string, startTs int64, endTs int64) ([]PerfMetric, error) {
 	var metrics []PerfMetric
+	modelColumn, bucketColumn := quoteModelIdentifier(DB, "model_name"), quoteModelIdentifier(DB, "bucket_ts")
 	query := DB.Model(&PerfMetric{}).
-		Where("model_name = ? AND bucket_ts >= ? AND bucket_ts <= ?", modelName, startTs, endTs)
+		Where(modelColumn+" = ? AND "+bucketColumn+" >= ? AND "+bucketColumn+" <= ?", modelName, startTs, endTs)
 	if group != "" {
-		query = query.Where(commonGroupCol+" = ?", group)
+		query = query.Where(quoteModelIdentifier(DB, "group")+" = ?", group)
 	}
-	err := query.Order("bucket_ts ASC").Find(&metrics).Error
+	err := query.Order(bucketColumn + " ASC").Find(&metrics).Error
 	return metrics, err
 }
 
@@ -80,37 +100,43 @@ type PerfMetricSummaryBucket struct {
 
 func GetPerfMetricsSummaryAll(startTs int64, endTs int64, groups []string) ([]PerfMetricSummary, error) {
 	var summaries []PerfMetricSummary
+	bucketColumn := quoteModelIdentifier(DB, "bucket_ts")
+	modelColumn := quoteModelIdentifier(DB, "model_name")
+	requestCountColumn := quoteModelIdentifier(DB, "request_count")
 	query := DB.Model(&PerfMetric{}).
-		Select("model_name, SUM(request_count) as request_count, SUM(success_count) as success_count, SUM(total_latency_ms) as total_latency_ms, SUM(output_tokens) as output_tokens, SUM(generation_ms) as generation_ms").
-		Where("bucket_ts >= ? AND bucket_ts <= ?", startTs, endTs)
+		Select(perfMetricSummarySelect(false)).
+		Where(bucketColumn+" >= ? AND "+bucketColumn+" <= ?", startTs, endTs)
 	if groups != nil {
 		if len(groups) == 0 {
 			return summaries, nil
 		}
-		query = query.Where(commonGroupCol+" IN ?", groups)
+		query = query.Where(quoteModelIdentifier(DB, "group")+" IN ?", groups)
 	}
 	err := query.
-		Group("model_name").
-		Having("SUM(request_count) > 0").
+		Group(modelColumn).
+		Having("SUM(" + requestCountColumn + ") > 0").
 		Find(&summaries).Error
 	return summaries, err
 }
 
 func GetPerfMetricsSummaryBucketsAll(startTs int64, endTs int64, groups []string) ([]PerfMetricSummaryBucket, error) {
 	var summaries []PerfMetricSummaryBucket
+	bucketColumn := quoteModelIdentifier(DB, "bucket_ts")
+	modelColumn := quoteModelIdentifier(DB, "model_name")
+	requestCountColumn := quoteModelIdentifier(DB, "request_count")
 	query := DB.Model(&PerfMetric{}).
-		Select("model_name, bucket_ts, SUM(request_count) as request_count, SUM(success_count) as success_count, SUM(total_latency_ms) as total_latency_ms, SUM(output_tokens) as output_tokens, SUM(generation_ms) as generation_ms").
-		Where("bucket_ts >= ? AND bucket_ts <= ?", startTs, endTs)
+		Select(perfMetricSummarySelect(true)).
+		Where(bucketColumn+" >= ? AND "+bucketColumn+" <= ?", startTs, endTs)
 	if groups != nil {
 		if len(groups) == 0 {
 			return summaries, nil
 		}
-		query = query.Where(commonGroupCol+" IN ?", groups)
+		query = query.Where(quoteModelIdentifier(DB, "group")+" IN ?", groups)
 	}
 	err := query.
-		Group("model_name, bucket_ts").
-		Having("SUM(request_count) > 0").
-		Order("bucket_ts ASC").
+		Group(modelColumn + ", " + bucketColumn).
+		Having("SUM(" + requestCountColumn + ") > 0").
+		Order(bucketColumn + " ASC").
 		Find(&summaries).Error
 	return summaries, err
 }
@@ -119,7 +145,7 @@ func DeletePerfMetricsBefore(cutoffTs int64) error {
 	if cutoffTs <= 0 {
 		return nil
 	}
-	return DB.Where("bucket_ts < ?", cutoffTs).Delete(&PerfMetric{}).Error
+	return DB.Where(quoteModelIdentifier(DB, "bucket_ts")+" < ?", cutoffTs).Delete(&PerfMetric{}).Error
 }
 
 func PerfMetricStartTime(hours int) int64 {

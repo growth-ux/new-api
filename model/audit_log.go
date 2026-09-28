@@ -138,6 +138,7 @@ func RecordAuditLog(c *gin.Context, entry AuditLog) {
 
 func GetAuditLogs(filter AuditLogFilter, start, limit, viewerRole int) ([]*AuditLog, int64, error) {
 	query := LOG_DB.Model(&AuditLog{})
+	column := func(name string) string { return quoteModelIdentifier(LOG_DB, name) }
 	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		// Decode native JSON through database/sql as text for AuditOther.Scan.
 		// Preserve numeric metadata instead of returning quoted Int64 values.
@@ -147,41 +148,41 @@ func GetAuditLogs(filter AuditLogFilter, start, limit, viewerRole int) ([]*Audit
 		})))
 	}
 	if viewerRole < common.RoleRootUser {
-		query = query.Where("actor_role IN ?", []int{common.RoleCommonUser, common.RoleAdminUser})
+		query = query.Where(column("actor_role")+" IN ?", []int{common.RoleCommonUser, common.RoleAdminUser})
 	}
 	if filter.UserId > 0 {
-		query = query.Where("user_id = ?", filter.UserId)
+		query = query.Where(column("user_id")+" = ?", filter.UserId)
 	}
 	if filter.Username != "" {
-		query = query.Where("username = ?", filter.Username)
+		query = query.Where(column("username")+" = ?", filter.Username)
 	}
 	if filter.Category != "" {
-		query = query.Where("category = ?", filter.Category)
+		query = query.Where(column("category")+" = ?", filter.Category)
 	}
 	if filter.TokenRef != "" {
-		query = query.Where("token_ref = ?", filter.TokenRef)
+		query = query.Where(column("token_ref")+" = ?", filter.TokenRef)
 	}
 	if filter.ExcludeTokenRef != "" {
-		query = query.Where("token_ref <> ?", filter.ExcludeTokenRef)
+		query = query.Where(column("token_ref")+" <> ?", filter.ExcludeTokenRef)
 	}
 	if filter.RequestId != "" {
-		query = query.Where("request_id = ?", filter.RequestId)
+		query = query.Where(column("request_id")+" = ?", filter.RequestId)
 	}
 	if filter.StartTimestamp > 0 {
-		query = query.Where("created_at >= ?", filter.StartTimestamp)
+		query = query.Where(column("created_at")+" >= ?", filter.StartTimestamp)
 	}
 	if filter.EndTimestamp > 0 {
-		query = query.Where("created_at <= ?", filter.EndTimestamp)
+		query = query.Where(column("created_at")+" <= ?", filter.EndTimestamp)
 	}
 	if filter.Success != nil {
-		query = query.Where("success = ?", *filter.Success)
+		query = query.Where(column("success")+" = ?", *filter.Success)
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	logs := make([]*AuditLog, 0)
-	if err := query.Order("created_at DESC").Order("event_id DESC").Offset(start).Limit(limit).Find(&logs).Error; err != nil {
+	if err := query.Order(column("created_at") + " DESC").Order(column("event_id") + " DESC").Offset(start).Limit(limit).Find(&logs).Error; err != nil {
 		return nil, 0, err
 	}
 	visibility := logOtherVisibilityUser
@@ -212,7 +213,7 @@ type UserAccessTokenStatus struct {
 
 func GetUserAccessTokenStatus(userId int) (*UserAccessTokenStatus, error) {
 	var user User
-	if err := DB.Select("id", "role", "access_token", "access_token_created_at").First(&user, userId).Error; err != nil {
+	if err := DB.Select(quoteModelIdentifiers(DB, "id", "role", "access_token", "access_token_created_at")).First(&user, userId).Error; err != nil {
 		return nil, err
 	}
 	status := &UserAccessTokenStatus{Exists: user.GetAccessToken() != ""}
@@ -222,11 +223,12 @@ func GetUserAccessTokenStatus(userId int) (*UserAccessTokenStatus, error) {
 	status.TokenRef = AccessTokenFingerprint(user.GetAccessToken())
 	status.CreatedAt = user.AccessTokenCreatedAt
 	var latest AuditLog
-	query := LOG_DB.Select("created_at", "ip").Where("user_id = ? AND token_ref = ? AND category = ?", userId, status.TokenRef, AuditCategoryAccessToken)
+	column := func(name string) string { return quoteModelIdentifier(LOG_DB, name) }
+	query := LOG_DB.Select(quoteModelIdentifiers(LOG_DB, "created_at", "ip")).Where(column("user_id")+" = ? AND "+column("token_ref")+" = ? AND "+column("category")+" = ?", userId, status.TokenRef, AuditCategoryAccessToken)
 	if user.Role < common.RoleRootUser {
-		query = query.Where("actor_role IN ?", []int{common.RoleCommonUser, common.RoleAdminUser})
+		query = query.Where(column("actor_role")+" IN ?", []int{common.RoleCommonUser, common.RoleAdminUser})
 	}
-	err := query.Order("created_at DESC").Order("event_id DESC").Take(&latest).Error
+	err := query.Order(column("created_at") + " DESC").Order(column("event_id") + " DESC").Take(&latest).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return status, nil
 	}

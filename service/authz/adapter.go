@@ -21,7 +21,7 @@ func newGormAdapter(db *gorm.DB) *gormAdapter {
 
 func (a *gormAdapter) LoadPolicy(m casbinmodel.Model) error {
 	var rules []model.CasbinRule
-	if err := a.db.Order("id asc").Find(&rules).Error; err != nil {
+	if err := a.db.Order(clause.OrderByColumn{Column: clause.Column{Name: "id"}}).Find(&rules).Error; err != nil {
 		return err
 	}
 	for _, rule := range rules {
@@ -93,24 +93,24 @@ func (a *gormAdapter) RemovePolicy(_ string, ptype string, rule []string) error 
 }
 
 func (a *gormAdapter) RemoveFilteredPolicy(_ string, ptype string, fieldIndex int, fieldValues ...string) error {
-	query := a.db.Where("ptype = ?", ptype)
+	query := a.db.Where(clause.Eq{Column: clause.Column{Name: "ptype"}, Value: ptype})
 	for i, value := range fieldValues {
 		if value == "" {
 			continue
 		}
-		query = query.Where("v"+string(rune('0'+fieldIndex+i))+" = ?", value)
+		query = query.Where(clause.Eq{Column: clause.Column{Name: "v" + string(rune('0'+fieldIndex+i))}, Value: value})
 	}
 	return query.Delete(&model.CasbinRule{}).Error
 }
 
 func (a *gormAdapter) ruleQuery(query *gorm.DB, ptype string, rule []string) *gorm.DB {
-	query = query.Where("ptype = ?", ptype)
+	query = query.Where(clause.Eq{Column: clause.Column{Name: "ptype"}, Value: ptype})
 	for idx := range 6 {
 		value := ""
 		if idx < len(rule) {
 			value = rule[idx]
 		}
-		query = query.Where("v"+string(rune('0'+idx))+" = ?", value)
+		query = query.Where(clause.Eq{Column: clause.Column{Name: "v" + string(rune('0'+idx))}, Value: value})
 	}
 	return query
 }

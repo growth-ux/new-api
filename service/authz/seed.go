@@ -35,14 +35,16 @@ func seedBuiltInRoles(db *gorm.DB) error {
 }
 
 func resetBuiltInRolePolicies(db *gorm.DB) error {
-	subjects := make([]string, 0, len(builtInRoles))
+	subjects := make([]interface{}, 0, len(builtInRoles))
 	for _, spec := range builtInRoles {
 		subjects = append(subjects, RoleSubject(spec.Key))
 	}
 	// Scoped legacy rules must survive baseline reseeding so the adapter can
 	// retain their restrictions instead of replacing them with global grants.
-	return db.Where("ptype = ? AND v0 IN ?", "p", subjects).
-		Where("(v4 = ? OR v4 IS NULL) AND (v5 = ? OR v5 IS NULL)", "", "").
+	return db.Where(clause.Eq{Column: clause.Column{Name: "ptype"}, Value: "p"}).
+		Where(clause.IN{Column: clause.Column{Name: "v0"}, Values: subjects}).
+		Where(clause.Or(clause.Eq{Column: clause.Column{Name: "v4"}, Value: ""}, clause.Eq{Column: clause.Column{Name: "v4"}, Value: nil})).
+		Where(clause.Or(clause.Eq{Column: clause.Column{Name: "v5"}, Value: ""}, clause.Eq{Column: clause.Column{Name: "v5"}, Value: nil})).
 		Delete(&model.CasbinRule{}).Error
 }
 

@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,26 @@ type QuotaDataLogParams struct {
 	TokenID   int
 	ChannelID int
 	NodeName  string
+}
+
+func quotaDataIdentity(data *QuotaData) map[string]any {
+	return map[string]any{
+		"user_id": data.UserID, "username": data.Username, "model_name": data.ModelName,
+		"created_at": data.CreatedAt, "use_group": data.UseGroup, "token_id": data.TokenID,
+		"channel_id": data.ChannelID, "node_name": data.NodeName,
+	}
+}
+
+func quotaDataSummarySelect(dimensions ...string) string {
+	columns := make([]string, 0, len(dimensions)+3)
+	for _, name := range dimensions {
+		columns = append(columns, quoteModelIdentifier(DB, name))
+	}
+	for _, name := range []string{"count", "quota", "token_used"} {
+		column := quoteModelIdentifier(DB, name)
+		columns = append(columns, fmt.Sprintf("SUM(%s) AS %s", column, column))
+	}
+	return strings.Join(columns, ", ")
 }
 
 func UpdateQuotaData() {
@@ -107,10 +128,7 @@ func SaveQuotaDataCache() {
 	// 3. 如果没有数据，就插入数据
 	for _, quotaData := range CacheQuotaData {
 		quotaDataDB := &QuotaData{}
-		DB.Table("quota_data").
-			Where("user_id = ? and username = ? and model_name = ? and created_at = ? and use_group = ? and token_id = ? and channel_id = ? and node_name = ?",
-				quotaData.UserID, quotaData.Username, quotaData.ModelName, quotaData.CreatedAt, quotaData.UseGroup, quotaData.TokenID, quotaData.ChannelID, quotaData.NodeName).
-			First(quotaDataDB)
+		DB.Table("quota_data").Where(quotaDataIdentity(quotaData)).First(quotaDataDB)
 		if quotaDataDB.Id > 0 {
 			//quotaDataDB.Count += quotaData.Count
 			//quotaDataDB.Quota += quotaData.Quota
@@ -126,12 +144,11 @@ func SaveQuotaDataCache() {
 
 func increaseQuotaData(quotaData *QuotaData) {
 	err := DB.Table("quota_data").
-		Where("user_id = ? and username = ? and model_name = ? and created_at = ? and use_group = ? and token_id = ? and channel_id = ? and node_name = ?",
-			quotaData.UserID, quotaData.Username, quotaData.ModelName, quotaData.CreatedAt, quotaData.UseGroup, quotaData.TokenID, quotaData.ChannelID, quotaData.NodeName).
+		Where(quotaDataIdentity(quotaData)).
 		Updates(map[string]any{
-			"count":      gorm.Expr("count + ?", quotaData.Count),
-			"quota":      gorm.Expr("quota + ?", quotaData.Quota),
-			"token_used": gorm.Expr("token_used + ?", quotaData.TokenUsed),
+			"count":      gorm.Expr(quoteModelIdentifier(DB, "count")+" + ?", quotaData.Count),
+			"quota":      gorm.Expr(quoteModelIdentifier(DB, "quota")+" + ?", quotaData.Quota),
+			"token_used": gorm.Expr(quoteModelIdentifier(DB, "token_used")+" + ?", quotaData.TokenUsed),
 		}).Error
 	if err != nil {
 		common.SysLog(fmt.Sprintf("increaseQuotaData error: %s", err))
@@ -142,9 +159,9 @@ func GetQuotaDataByUsername(username string, startTime int64, endTime int64) (qu
 	var quotaDatas []*QuotaData
 	// 从quota_data表中查询数据
 	err = DB.Table("quota_data").
-		Select("user_id, username, model_name, created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
-		Where("username = ? and created_at >= ? and created_at <= ?", username, startTime, endTime).
-		Group("user_id, username, model_name, created_at").
+		Select(quotaDataSummarySelect("user_id", "username", "model_name", "created_at")).
+		Where(quoteModelIdentifier(DB, "username")+" = ? and "+quoteModelIdentifier(DB, "created_at")+" >= ? and "+quoteModelIdentifier(DB, "created_at")+" <= ?", username, startTime, endTime).
+		Group(quoteModelIdentifiers(DB, "user_id", "username", "model_name", "created_at")).
 		Find(&quotaDatas).Error
 	return quotaDatas, err
 }
@@ -153,9 +170,9 @@ func GetQuotaDataByUserId(userId int, startTime int64, endTime int64) (quotaData
 	var quotaDatas []*QuotaData
 	// 从quota_data表中查询数据
 	err = DB.Table("quota_data").
-		Select("user_id, username, model_name, created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
-		Where("user_id = ? and created_at >= ? and created_at <= ?", userId, startTime, endTime).
-		Group("user_id, username, model_name, created_at").
+		Select(quotaDataSummarySelect("user_id", "username", "model_name", "created_at")).
+		Where(quoteModelIdentifier(DB, "user_id")+" = ? and "+quoteModelIdentifier(DB, "created_at")+" >= ? and "+quoteModelIdentifier(DB, "created_at")+" <= ?", userId, startTime, endTime).
+		Group(quoteModelIdentifiers(DB, "user_id", "username", "model_name", "created_at")).
 		Find(&quotaDatas).Error
 	return quotaDatas, err
 }
@@ -163,9 +180,9 @@ func GetQuotaDataByUserId(userId int, startTime int64, endTime int64) (quotaData
 func GetQuotaDataGroupByUser(startTime int64, endTime int64) (quotaData []*QuotaData, err error) {
 	var quotaDatas []*QuotaData
 	err = DB.Table("quota_data").
-		Select("username, created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
-		Where("created_at >= ? and created_at <= ?", startTime, endTime).
-		Group("username, created_at").
+		Select(quotaDataSummarySelect("username", "created_at")).
+		Where(quoteModelIdentifier(DB, "created_at")+" >= ? and "+quoteModelIdentifier(DB, "created_at")+" <= ?", startTime, endTime).
+		Group(quoteModelIdentifiers(DB, "username", "created_at")).
 		Find(&quotaDatas).Error
 	return quotaDatas, err
 }
@@ -175,9 +192,6 @@ func GetAllQuotaDates(startTime int64, endTime int64, username string) (quotaDat
 		return GetQuotaDataByUsername(username, startTime, endTime)
 	}
 	var quotaDatas []*QuotaData
-	// 从quota_data表中查询数据
-	// only select model_name, sum(count) as count, sum(quota) as quota, model_name, created_at from quota_data group by model_name, created_at;
-	//err = DB.Table("quota_data").Where("created_at >= ? and created_at <= ?", startTime, endTime).Find(&quotaDatas).Error
-	err = DB.Table("quota_data").Select("model_name, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used, created_at").Where("created_at >= ? and created_at <= ?", startTime, endTime).Group("model_name, created_at").Find(&quotaDatas).Error
+	err = DB.Table("quota_data").Select(quotaDataSummarySelect("model_name", "created_at")).Where(quoteModelIdentifier(DB, "created_at")+" >= ? and "+quoteModelIdentifier(DB, "created_at")+" <= ?", startTime, endTime).Group(quoteModelIdentifiers(DB, "model_name", "created_at")).Find(&quotaDatas).Error
 	return quotaDatas, err
 }

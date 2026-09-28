@@ -74,7 +74,7 @@ func ValidateTopUpQuotaCapacity(userId int, creditedQuota int) error {
 	}
 
 	var user User
-	if err := DB.Select("quota").Where("id = ?", userId).First(&user).Error; err != nil {
+	if err := DB.Select("quota").Where(quoteModelIdentifier(DB, "id")+" = ?", userId).First(&user).Error; err != nil {
 		return err
 	}
 	if user.Quota > maxCurrentQuota {
@@ -94,10 +94,10 @@ func creditTopUpQuota(tx *gorm.DB, userId int, creditedQuota int, updates map[st
 
 	updateFields := make(map[string]any, len(updates)+1)
 	maps.Copy(updateFields, updates)
-	updateFields["quota"] = gorm.Expr("quota + ?", creditedQuota)
+	updateFields["quota"] = gorm.Expr(quoteModelIdentifier(tx, "quota")+" + ?", creditedQuota)
 
 	result := tx.Model(&User{}).
-		Where("id = ? AND quota <= ?", userId, maxCurrentQuota).
+		Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "quota")+" <= ?", userId, maxCurrentQuota).
 		Updates(updateFields)
 	if result.Error != nil {
 		return result.Error
@@ -107,7 +107,7 @@ func creditTopUpQuota(tx *gorm.DB, userId int, creditedQuota int, updates map[st
 	}
 
 	var count int64
-	if err := tx.Model(&User{}).Where("id = ?", userId).Count(&count).Error; err != nil {
+	if err := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", userId).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
@@ -125,7 +125,7 @@ func (topUp *TopUp) Update() error {
 func GetTopUpById(id int) *TopUp {
 	var topUp *TopUp
 	var err error
-	err = DB.Where("id = ?", id).First(&topUp).Error
+	err = DB.Where(quoteModelIdentifier(DB, "id")+" = ?", id).First(&topUp).Error
 	if err != nil {
 		return nil
 	}
@@ -135,7 +135,7 @@ func GetTopUpById(id int) *TopUp {
 func GetTopUpByTradeNo(tradeNo string) *TopUp {
 	var topUp *TopUp
 	var err error
-	err = DB.Where("trade_no = ?", tradeNo).First(&topUp).Error
+	err = DB.Where(quoteModelIdentifier(DB, "trade_no")+" = ?", tradeNo).First(&topUp).Error
 	if err != nil {
 		return nil
 	}
@@ -311,14 +311,14 @@ func GetUserTopUps(userId int, pageInfo *common.PageInfo) (topups []*TopUp, tota
 	cutoff := topUpQueryCutoff()
 
 	// Get total count within transaction
-	err = tx.Model(&TopUp{}).Where("user_id = ? AND create_time >= ?", userId, cutoff).Count(&total).Error
+	err = tx.Model(&TopUp{}).Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "create_time")+" >= ?", userId, cutoff).Count(&total).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
 
 	// Get paginated topups within same transaction
-	err = tx.Where("user_id = ? AND create_time >= ?", userId, cutoff).Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error
+	err = tx.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "create_time")+" >= ?", userId, cutoff).Order(quoteModelIdentifier(DB, "id") + " desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -349,7 +349,7 @@ func GetAllTopUps(pageInfo *common.PageInfo) (topups []*TopUp, total int64, err 
 		return nil, 0, err
 	}
 
-	if err = tx.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
+	if err = tx.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
@@ -377,14 +377,14 @@ func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (to
 		}
 	}()
 
-	query := tx.Model(&TopUp{}).Where("user_id = ? AND create_time >= ?", userId, topUpQueryCutoff())
+	query := tx.Model(&TopUp{}).Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "create_time")+" >= ?", userId, topUpQueryCutoff())
 	if keyword != "" {
 		pattern, perr := sanitizeLikePattern(keyword)
 		if perr != nil {
 			tx.Rollback()
 			return nil, 0, perr
 		}
-		query = query.Where("trade_no LIKE ? ESCAPE '!'", pattern)
+		query = query.Where(quoteModelIdentifier(DB, "trade_no")+" LIKE ? ESCAPE '!'", pattern)
 	}
 
 	if err = query.Limit(searchTopUpCountHardLimit).Count(&total).Error; err != nil {
@@ -393,7 +393,7 @@ func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (to
 		return nil, 0, errors.New("搜索充值记录失败")
 	}
 
-	if err = query.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
+	if err = query.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to search topups: " + err.Error())
 		return nil, 0, errors.New("搜索充值记录失败")
@@ -424,7 +424,7 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 			tx.Rollback()
 			return nil, 0, perr
 		}
-		query = query.Where("trade_no LIKE ? ESCAPE '!'", pattern)
+		query = query.Where(quoteModelIdentifier(DB, "trade_no")+" LIKE ? ESCAPE '!'", pattern)
 	}
 
 	if err = query.Limit(searchTopUpCountHardLimit).Count(&total).Error; err != nil {
@@ -433,7 +433,7 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 		return nil, 0, errors.New("搜索充值记录失败")
 	}
 
-	if err = query.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
+	if err = query.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to search topups: " + err.Error())
 		return nil, 0, errors.New("搜索充值记录失败")
@@ -568,7 +568,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		if customerEmail != "" {
 			// 先检查用户当前邮箱是否为空
 			var user User
-			err = tx.Where("id = ?", topUp.UserId).First(&user).Error
+			err = tx.Where(quoteModelIdentifier(DB, "id")+" = ?", topUp.UserId).First(&user).Error
 			if err != nil {
 				return err
 			}

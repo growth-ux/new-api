@@ -25,7 +25,7 @@ const (
 	dm8PrefillTable        = "prefill_groups"
 	dm8PrefillUniqueIndex  = "uk_prefill_name"
 	dm8PrefillUniqueColumn = "name"
-	dm8PrefillUniqueCond   = "deleted_at IS NULL"
+	dm8PrefillUniqueCond   = `"deleted_at" IS NULL`
 )
 
 // ensureDM8PrefillUniqueIndex replaces the plain unique index GORM creates for

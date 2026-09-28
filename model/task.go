@@ -285,32 +285,32 @@ func TaskGetAllUserTask(userId int, startIdx int, num int, queryParams SyncTaskQ
 	var err error
 
 	// 初始化查询构建器
-	query := DB.Where("user_id = ?", userId)
+	query := DB.Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId)
 
 	if queryParams.TaskID != "" {
-		query = query.Where("task_id = ?", queryParams.TaskID)
+		query = query.Where(quoteModelIdentifier(DB, "task_id")+" = ?", queryParams.TaskID)
 	}
 	if queryParams.Action != "" {
-		query = query.Where("action = ?", queryParams.Action)
+		query = query.Where(quoteModelIdentifier(DB, "action")+" = ?", queryParams.Action)
 	}
 	if queryParams.Status != "" {
-		query = query.Where("status = ?", queryParams.Status)
+		query = query.Where(quoteModelIdentifier(DB, "status")+" = ?", queryParams.Status)
 	}
 	if queryParams.Platform != "" {
-		query = query.Where("platform = ?", queryParams.Platform)
+		query = query.Where(quoteModelIdentifier(DB, "platform")+" = ?", queryParams.Platform)
 	}
 	if queryParams.StartTimestamp != 0 {
 		// 假设您已将前端传来的时间戳转换为数据库所需的时间格式，并处理了时间戳的验证和解析
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != 0 {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 
 	// 获取数据
 	// Task lists never render the persisted upstream snapshot; the dashboard
 	// loads media through the artifacts endpoint instead.
-	err = query.Omit("channel_id", "data").Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Omit("channel_id", "data").Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -327,35 +327,35 @@ func TaskGetAllTasks(startIdx int, num int, queryParams SyncTaskQueryParams) []*
 
 	// 添加过滤条件
 	if queryParams.ChannelID != "" {
-		query = query.Where("channel_id = ?", queryParams.ChannelID)
+		query = query.Where(quoteModelIdentifier(DB, "channel_id")+" = ?", queryParams.ChannelID)
 	}
 	if queryParams.Platform != "" {
-		query = query.Where("platform = ?", queryParams.Platform)
+		query = query.Where(quoteModelIdentifier(DB, "platform")+" = ?", queryParams.Platform)
 	}
 	if queryParams.UserID != "" {
-		query = query.Where("user_id = ?", queryParams.UserID)
+		query = query.Where(quoteModelIdentifier(DB, "user_id")+" = ?", queryParams.UserID)
 	}
 	if len(queryParams.UserIDs) != 0 {
-		query = query.Where("user_id in (?)", queryParams.UserIDs)
+		query = query.Where(quoteModelIdentifier(DB, "user_id")+" in (?)", queryParams.UserIDs)
 	}
 	if queryParams.TaskID != "" {
-		query = query.Where("task_id = ?", queryParams.TaskID)
+		query = query.Where(quoteModelIdentifier(DB, "task_id")+" = ?", queryParams.TaskID)
 	}
 	if queryParams.Action != "" {
-		query = query.Where("action = ?", queryParams.Action)
+		query = query.Where(quoteModelIdentifier(DB, "action")+" = ?", queryParams.Action)
 	}
 	if queryParams.Status != "" {
-		query = query.Where("status = ?", queryParams.Status)
+		query = query.Where(quoteModelIdentifier(DB, "status")+" = ?", queryParams.Status)
 	}
 	if queryParams.StartTimestamp != 0 {
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != 0 {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 
 	// 获取数据
-	err = query.Omit("data").Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Omit("data").Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -365,10 +365,10 @@ func TaskGetAllTasks(startIdx int, num int, queryParams SyncTaskQueryParams) []*
 
 func GetTimedOutUnfinishedTasks(cutoffUnix int64, limit int) []*Task {
 	var tasks []*Task
-	err := DB.Where("progress != ?", "100%").
-		Where("status NOT IN ?", []string{TaskStatusFailure, TaskStatusSuccess}).
-		Where("submit_time < ?", cutoffUnix).
-		Order("submit_time").
+	err := DB.Where(quoteModelIdentifier(DB, "progress")+" != ?", "100%").
+		Where(quoteModelIdentifier(DB, "status")+" NOT IN ?", []string{TaskStatusFailure, TaskStatusSuccess}).
+		Where(quoteModelIdentifier(DB, "submit_time")+" < ?", cutoffUnix).
+		Order(quoteModelIdentifier(DB, "submit_time")).
 		Limit(limit).
 		Find(&tasks).Error
 	if err != nil {
@@ -381,7 +381,7 @@ func GetAllUnFinishSyncTasks(limit int) []*Task {
 	var tasks []*Task
 	var err error
 	// get all tasks progress is not 100%
-	err = DB.Where("progress != ?", "100%").Where("status != ?", TaskStatusFailure).Where("status != ?", TaskStatusSuccess).Limit(limit).Order("id").Find(&tasks).Error
+	err = DB.Where(quoteModelIdentifier(DB, "progress")+" != ?", "100%").Where(quoteModelIdentifier(DB, "status")+" != ?", TaskStatusFailure).Where(quoteModelIdentifier(DB, "status")+" != ?", TaskStatusSuccess).Limit(limit).Order(quoteModelIdentifier(DB, "id")).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -395,9 +395,9 @@ func GetAllUnFinishSyncTasks(limit int) []*Task {
 func HasUnfinishedSyncTasks() bool {
 	var id int64
 	err := DB.Model(&Task{}).
-		Where("progress != ?", "100%").
-		Where("status != ?", TaskStatusFailure).
-		Where("status != ?", TaskStatusSuccess).
+		Where(quoteModelIdentifier(DB, "progress")+" != ?", "100%").
+		Where(quoteModelIdentifier(DB, "status")+" != ?", TaskStatusFailure).
+		Where(quoteModelIdentifier(DB, "status")+" != ?", TaskStatusSuccess).
 		Limit(1).
 		Pluck("id", &id).Error
 	return err == nil && id != 0
@@ -409,7 +409,7 @@ func GetByOnlyTaskId(taskId string) (*Task, bool, error) {
 	}
 	var task *Task
 	var err error
-	err = DB.Where("task_id = ?", taskId).First(&task).Error
+	err = DB.Where(quoteModelIdentifier(DB, "task_id")+" = ?", taskId).First(&task).Error
 	exist, err := RecordExist(err)
 	if err != nil {
 		return nil, false, err
@@ -426,7 +426,7 @@ func GetUniqueByOnlyTaskId(taskId string) (*Task, bool, error) {
 		return nil, false, nil
 	}
 	var tasks []*Task
-	if err := DB.Where("task_id = ?", taskId).Order("id").Limit(2).Find(&tasks).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "task_id")+" = ?", taskId).Order(quoteModelIdentifier(DB, "id")).Limit(2).Find(&tasks).Error; err != nil {
 		return nil, false, err
 	}
 	if len(tasks) != 1 {
@@ -441,7 +441,7 @@ func GetByTaskId(userId int, taskId string) (*Task, bool, error) {
 	}
 	var task *Task
 	var err error
-	err = DB.Where("user_id = ? and task_id = ?", userId, taskId).
+	err = DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? and "+quoteModelIdentifier(DB, "task_id")+" = ?", userId, taskId).
 		First(&task).Error
 	exist, err := RecordExist(err)
 	if err != nil {
@@ -456,7 +456,7 @@ func GetByTaskIdsForPlatforms(userID int, platforms []constant.TaskPlatform, tas
 	}
 	var tasks []*Task
 	err := DB.
-		Where("user_id = ? AND platform IN ? AND task_id IN ?", userID, platforms, taskIDs).
+		Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "platform")+" IN ? AND "+quoteModelIdentifier(DB, "task_id")+" IN ?", userID, platforms, taskIDs).
 		Find(&tasks).Error
 	if err != nil {
 		return nil, err
@@ -473,7 +473,7 @@ func GetTaskForProtocolObservation(ctx context.Context, userID int, platform con
 	}
 	var task Task
 	err := DB.WithContext(ctx).
-		Where("user_id = ? AND platform = ? AND task_id = ?", userID, platform, taskID).
+		Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "platform")+" = ? AND "+quoteModelIdentifier(DB, "task_id")+" = ?", userID, platform, taskID).
 		First(&task).Error
 	exists, err := RecordExist(err)
 	if err != nil || !exists {
@@ -555,7 +555,7 @@ func (t *Task) UpdateQuota() error {
 // falls back to INSERT ON CONFLICT when the WHERE-guarded UPDATE matches
 // zero rows, which silently bypasses the CAS guard.
 func (t *Task) UpdateWithStatus(fromStatus TaskStatus) (bool, error) {
-	result := DB.Model(t).Where("status = ?", fromStatus).Select("*").Updates(t)
+	result := DB.Model(t).Where(quoteModelIdentifier(DB, "status")+" = ?", fromStatus).Select("*").Updates(t)
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -572,7 +572,7 @@ func TaskBulkUpdateByID(ids []int64, params map[string]any) error {
 		return nil
 	}
 	return DB.Model(&Task{}).
-		Where("id in (?)", ids).
+		Where(quoteModelIdentifier(DB, "id")+" in (?)", ids).
 		Updates(params).Error
 }
 
@@ -586,31 +586,31 @@ func TaskCountAllTasks(queryParams SyncTaskQueryParams) int64 {
 	var total int64
 	query := DB.Model(&Task{})
 	if queryParams.ChannelID != "" {
-		query = query.Where("channel_id = ?", queryParams.ChannelID)
+		query = query.Where(quoteModelIdentifier(DB, "channel_id")+" = ?", queryParams.ChannelID)
 	}
 	if queryParams.Platform != "" {
-		query = query.Where("platform = ?", queryParams.Platform)
+		query = query.Where(quoteModelIdentifier(DB, "platform")+" = ?", queryParams.Platform)
 	}
 	if queryParams.UserID != "" {
-		query = query.Where("user_id = ?", queryParams.UserID)
+		query = query.Where(quoteModelIdentifier(DB, "user_id")+" = ?", queryParams.UserID)
 	}
 	if len(queryParams.UserIDs) != 0 {
-		query = query.Where("user_id in (?)", queryParams.UserIDs)
+		query = query.Where(quoteModelIdentifier(DB, "user_id")+" in (?)", queryParams.UserIDs)
 	}
 	if queryParams.TaskID != "" {
-		query = query.Where("task_id = ?", queryParams.TaskID)
+		query = query.Where(quoteModelIdentifier(DB, "task_id")+" = ?", queryParams.TaskID)
 	}
 	if queryParams.Action != "" {
-		query = query.Where("action = ?", queryParams.Action)
+		query = query.Where(quoteModelIdentifier(DB, "action")+" = ?", queryParams.Action)
 	}
 	if queryParams.Status != "" {
-		query = query.Where("status = ?", queryParams.Status)
+		query = query.Where(quoteModelIdentifier(DB, "status")+" = ?", queryParams.Status)
 	}
 	if queryParams.StartTimestamp != 0 {
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != 0 {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 	_ = query.Count(&total).Error
 	return total
@@ -619,24 +619,24 @@ func TaskCountAllTasks(queryParams SyncTaskQueryParams) int64 {
 // TaskCountAllUserTask returns total tasks for given user
 func TaskCountAllUserTask(userId int, queryParams SyncTaskQueryParams) int64 {
 	var total int64
-	query := DB.Model(&Task{}).Where("user_id = ?", userId)
+	query := DB.Model(&Task{}).Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId)
 	if queryParams.TaskID != "" {
-		query = query.Where("task_id = ?", queryParams.TaskID)
+		query = query.Where(quoteModelIdentifier(DB, "task_id")+" = ?", queryParams.TaskID)
 	}
 	if queryParams.Action != "" {
-		query = query.Where("action = ?", queryParams.Action)
+		query = query.Where(quoteModelIdentifier(DB, "action")+" = ?", queryParams.Action)
 	}
 	if queryParams.Status != "" {
-		query = query.Where("status = ?", queryParams.Status)
+		query = query.Where(quoteModelIdentifier(DB, "status")+" = ?", queryParams.Status)
 	}
 	if queryParams.Platform != "" {
-		query = query.Where("platform = ?", queryParams.Platform)
+		query = query.Where(quoteModelIdentifier(DB, "platform")+" = ?", queryParams.Platform)
 	}
 	if queryParams.StartTimestamp != 0 {
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != 0 {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 	_ = query.Count(&total).Error
 	return total

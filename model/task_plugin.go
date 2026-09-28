@@ -24,7 +24,7 @@ type TaskPluginChannelRef struct {
 func GetTaskPluginUsage(key string) ([]TaskPluginChannelRef, int64, error) {
 	var channels []Channel
 	boundTypes := []int{constant.ChannelTypeTaskPlugin, constant.ChannelTypeNewAPI}
-	if err := DB.Where("type IN ? AND status = ?", boundTypes, common.ChannelStatusEnabled).Find(&channels).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "type")+" IN ? AND "+quoteModelIdentifier(DB, "status")+" = ?", boundTypes, common.ChannelStatusEnabled).Find(&channels).Error; err != nil {
 		return nil, 0, err
 	}
 	refs := make([]TaskPluginChannelRef, 0)
@@ -34,7 +34,7 @@ func GetTaskPluginUsage(key string) ([]TaskPluginChannelRef, int64, error) {
 		}
 	}
 	var inFlight int64
-	err := DB.Model(&Task{}).Where("platform = ? AND status NOT IN ?", key, []TaskStatus{TaskStatusSuccess, TaskStatusFailure}).Count(&inFlight).Error
+	err := DB.Model(&Task{}).Where(quoteModelIdentifier(DB, "platform")+" = ? AND "+quoteModelIdentifier(DB, "status")+" NOT IN ?", key, []TaskStatus{TaskStatusSuccess, TaskStatusFailure}).Count(&inFlight).Error
 	return refs, inFlight, err
 }
 
@@ -55,7 +55,7 @@ func UnbindTaskPlugin(channelID int, key string) (bool, error) {
 	}
 	setting.TaskExtendPluginKeys = slices.DeleteFunc(setting.TaskExtendPluginKeys, func(bound string) bool { return bound == key })
 	channel.SetSetting(setting)
-	return true, DB.Model(&Channel{}).Where("id = ?", channelID).Update("setting", channel.Setting).Error
+	return true, DB.Model(&Channel{}).Where(quoteModelIdentifier(DB, "id")+" = ?", channelID).Update("setting", channel.Setting).Error
 }
 
 // LongText is a string column sized for plugin payloads on every supported
@@ -135,7 +135,7 @@ func SaveTaskPlugin(plugin *TaskPlugin) error {
 
 func ListTaskPluginVersions(key string) ([]TaskPlugin, error) {
 	var plugins []TaskPlugin
-	err := DB.Where(&TaskPlugin{Key: key}).Order("created_at DESC, id DESC").Find(&plugins).Error
+	err := DB.Where(&TaskPlugin{Key: key}).Order(quoteModelIdentifier(DB, "created_at") + " DESC, " + quoteModelIdentifier(DB, "id") + " DESC").Find(&plugins).Error
 	return plugins, err
 }
 
@@ -288,7 +288,7 @@ func DeleteTaskPluginVersion(key, version string) (TaskPluginDeleteResult, error
 		var promoted TaskPlugin
 		err := lockForUpdate(tx).
 			Where(&TaskPlugin{Key: key}).
-			Order("created_at DESC, id DESC").
+			Order(quoteModelIdentifier(DB, "created_at") + " DESC, " + quoteModelIdentifier(DB, "id") + " DESC").
 			First(&promoted).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil

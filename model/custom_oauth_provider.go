@@ -73,14 +73,14 @@ func (CustomOAuthProvider) TableName() string {
 // GetAllCustomOAuthProviders returns all custom OAuth providers
 func GetAllCustomOAuthProviders() ([]*CustomOAuthProvider, error) {
 	var providers []*CustomOAuthProvider
-	err := DB.Order("id asc").Find(&providers).Error
+	err := DB.Order(quoteModelIdentifier(DB, "id") + " asc").Find(&providers).Error
 	return providers, err
 }
 
 // GetEnabledCustomOAuthProviders returns all enabled custom OAuth providers
 func GetEnabledCustomOAuthProviders() ([]*CustomOAuthProvider, error) {
 	var providers []*CustomOAuthProvider
-	err := DB.Where("enabled = ?", true).Order("id asc").Find(&providers).Error
+	err := DB.Where(quoteModelIdentifier(DB, "enabled")+" = ?", true).Order(quoteModelIdentifier(DB, "id") + " asc").Find(&providers).Error
 	return providers, err
 }
 
@@ -97,7 +97,7 @@ func GetCustomOAuthProviderById(id int) (*CustomOAuthProvider, error) {
 // GetCustomOAuthProviderBySlug returns a custom OAuth provider by slug
 func GetCustomOAuthProviderBySlug(slug string) (*CustomOAuthProvider, error) {
 	var provider CustomOAuthProvider
-	err := DB.Where("slug = ?", slug).First(&provider).Error
+	err := DB.Where(quoteModelIdentifier(DB, "slug")+" = ?", slug).First(&provider).Error
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func UpdateCustomOAuthProvider(provider *CustomOAuthProvider) error {
 // DeleteCustomOAuthProvider deletes a custom OAuth provider by ID
 func DeleteCustomOAuthProvider(id int) error {
 	// First, delete all user bindings for this provider
-	if err := DB.Where("provider_id = ?", id).Delete(&UserOAuthBinding{}).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "provider_id")+" = ?", id).Delete(&UserOAuthBinding{}).Error; err != nil {
 		return err
 	}
 	return DB.Delete(&CustomOAuthProvider{}, id).Error
@@ -133,9 +133,9 @@ func DeleteCustomOAuthProvider(id int) error {
 // Returns true on DB errors (fail-closed) to prevent slug conflicts
 func IsSlugTaken(slug string, excludeId int) bool {
 	var count int64
-	query := DB.Model(&CustomOAuthProvider{}).Where("slug = ?", slug)
+	query := DB.Model(&CustomOAuthProvider{}).Where(quoteModelIdentifier(DB, "slug")+" = ?", slug)
 	if excludeId > 0 {
-		query = query.Where("id != ?", excludeId)
+		query = query.Where(quoteModelIdentifier(DB, "id")+" != ?", excludeId)
 	}
 	res := query.Count(&count)
 	if res.Error != nil {

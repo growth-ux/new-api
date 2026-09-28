@@ -49,7 +49,7 @@ func IsVendorNameDuplicated(id int, name string) (bool, error) {
 		return false, nil
 	}
 	var cnt int64
-	err := DB.Model(&Vendor{}).Where("name = ? AND id <> ?", name, id).Count(&cnt).Error
+	err := DB.Model(&Vendor{}).Where(quoteModelIdentifier(DB, "name")+" = ? AND "+quoteModelIdentifier(DB, "id")+" <> ?", name, id).Count(&cnt).Error
 	return cnt > 0, err
 }
 
@@ -67,7 +67,7 @@ func (v *Vendor) Update() error {
 			return err
 		}
 		v.CreatedTime, v.Status, v.UpdatedTime = saved.CreatedTime, saved.Status, common.GetTimestamp()
-		return tx.Model(&Vendor{}).Where("id = ?", v.Id).Updates(map[string]any{"name": v.Name, "description": v.Description, "icon": v.Icon, "updated_time": v.UpdatedTime}).Error
+		return tx.Model(&Vendor{}).Where(quoteModelIdentifier(DB, "id")+" = ?", v.Id).Updates(map[string]any{"name": v.Name, "description": v.Description, "icon": v.Icon, "updated_time": v.UpdatedTime}).Error
 	})
 	if err == nil {
 		v.Version = VendorRecordVersion(v)
@@ -86,7 +86,7 @@ func GetVendorByID(id int) (*Vendor, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := DB.Model(&Model{}).Where("vendor_id = ?", id).Count(&v.ModelCount).Error; err != nil {
+	if err := DB.Model(&Model{}).Where(quoteModelIdentifier(DB, "vendor_id")+" = ?", id).Count(&v.ModelCount).Error; err != nil {
 		return nil, err
 	}
 	v.Version = VendorRecordVersion(&v)
@@ -104,10 +104,10 @@ func SearchVendors(keyword string, offset, limit int, association ...string) ([]
 	db := DB.Model(&Vendor{})
 	if keyword != "" {
 		like := "%" + keyword + "%"
-		db = db.Where("name LIKE ? OR description LIKE ?", like, like)
+		db = db.Where(quoteModelIdentifier(DB, "name")+" LIKE ? OR "+quoteModelIdentifier(DB, "description")+" LIKE ?", like, like)
 	}
 	if len(association) > 0 {
-		references := DB.Model(&Model{}).Select("1").Where("models.vendor_id = vendors.id")
+		references := DB.Model(&Model{}).Select("1").Where(quoteModelIdentifier(DB, "models") + "." + quoteModelIdentifier(DB, "vendor_id") + " = " + quoteModelIdentifier(DB, "vendors") + "." + quoteModelIdentifier(DB, "id"))
 		switch association[0] {
 		case "linked":
 			db = db.Where("EXISTS (?)", references)
@@ -120,7 +120,7 @@ func SearchVendors(keyword string, offset, limit int, association ...string) ([]
 		return nil, 0, err
 	}
 	var vendors []*Vendor
-	if err := db.Offset(offset).Limit(limit).Order("id DESC").Find(&vendors).Error; err != nil {
+	if err := db.Offset(offset).Limit(limit).Order(quoteModelIdentifier(DB, "id") + " DESC").Find(&vendors).Error; err != nil {
 		return nil, 0, err
 	}
 	counts, err := GetVendorModelCounts()

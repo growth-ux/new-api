@@ -23,14 +23,14 @@ func (UserOAuthBinding) TableName() string {
 // GetUserOAuthBindingsByUserId returns all OAuth bindings for a user
 func GetUserOAuthBindingsByUserId(userId int) ([]*UserOAuthBinding, error) {
 	var bindings []*UserOAuthBinding
-	err := DB.Where("user_id = ?", userId).Find(&bindings).Error
+	err := DB.Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId).Find(&bindings).Error
 	return bindings, err
 }
 
 // GetUserOAuthBinding returns a specific binding for a user and provider
 func GetUserOAuthBinding(userId, providerId int) (*UserOAuthBinding, error) {
 	var binding UserOAuthBinding
-	err := DB.Where("user_id = ? AND provider_id = ?", userId, providerId).First(&binding).Error
+	err := DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_id")+" = ?", userId, providerId).First(&binding).Error
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func GetUserOAuthBinding(userId, providerId int) (*UserOAuthBinding, error) {
 // GetUserByOAuthBinding finds a user by provider ID and provider user ID
 func GetUserByOAuthBinding(providerId int, providerUserId string) (*User, error) {
 	var binding UserOAuthBinding
-	err := DB.Where("provider_id = ? AND provider_user_id = ?", providerId, providerUserId).First(&binding).Error
+	err := DB.Where(quoteModelIdentifier(DB, "provider_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_user_id")+" = ?", providerId, providerUserId).First(&binding).Error
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func GetUserByOAuthBinding(providerId int, providerUserId string) (*User, error)
 // IsProviderUserIdTaken checks if a provider user ID is already bound to any user
 func IsProviderUserIdTaken(providerId int, providerUserId string) bool {
 	var count int64
-	DB.Model(&UserOAuthBinding{}).Where("provider_id = ? AND provider_user_id = ?", providerId, providerUserId).Count(&count)
+	DB.Model(&UserOAuthBinding{}).Where(quoteModelIdentifier(DB, "provider_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_user_id")+" = ?", providerId, providerUserId).Count(&count)
 	return count > 0
 }
 
@@ -95,7 +95,7 @@ func CreateUserOAuthBindingWithTx(tx *gorm.DB, binding *UserOAuthBinding) error 
 
 	// Check if this provider user ID is already taken (use tx to check within the same transaction)
 	var count int64
-	tx.Model(&UserOAuthBinding{}).Where("provider_id = ? AND provider_user_id = ?", binding.ProviderId, binding.ProviderUserId).Count(&count)
+	tx.Model(&UserOAuthBinding{}).Where(quoteModelIdentifier(DB, "provider_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_user_id")+" = ?", binding.ProviderId, binding.ProviderUserId).Count(&count)
 	if count > 0 {
 		return errors.New("this OAuth account is already bound to another user")
 	}
@@ -108,14 +108,14 @@ func CreateUserOAuthBindingWithTx(tx *gorm.DB, binding *UserOAuthBinding) error 
 func UpdateUserOAuthBinding(userId, providerId int, newProviderUserId string) error {
 	// Check if the new provider user ID is already taken by another user
 	var existingBinding UserOAuthBinding
-	err := DB.Where("provider_id = ? AND provider_user_id = ?", providerId, newProviderUserId).First(&existingBinding).Error
+	err := DB.Where(quoteModelIdentifier(DB, "provider_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_user_id")+" = ?", providerId, newProviderUserId).First(&existingBinding).Error
 	if err == nil && existingBinding.UserId != userId {
 		return errors.New("this OAuth account is already bound to another user")
 	}
 
 	// Check if user already has a binding for this provider
 	var binding UserOAuthBinding
-	err = DB.Where("user_id = ? AND provider_id = ?", userId, providerId).First(&binding).Error
+	err = DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_id")+" = ?", userId, providerId).First(&binding).Error
 	if err != nil {
 		// No existing binding, create new one
 		return CreateUserOAuthBinding(&UserOAuthBinding{
@@ -131,16 +131,16 @@ func UpdateUserOAuthBinding(userId, providerId int, newProviderUserId string) er
 
 // DeleteUserOAuthBinding deletes an OAuth binding
 func DeleteUserOAuthBinding(userId, providerId int) error {
-	return DB.Where("user_id = ? AND provider_id = ?", userId, providerId).Delete(&UserOAuthBinding{}).Error
+	return DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_id")+" = ?", userId, providerId).Delete(&UserOAuthBinding{}).Error
 }
 
 func deleteUserOAuthBindingsByUserId(tx *gorm.DB, userId int) error {
-	return tx.Where("user_id = ?", userId).Delete(&UserOAuthBinding{}).Error
+	return tx.Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId).Delete(&UserOAuthBinding{}).Error
 }
 
 // GetBindingCountByProviderId returns the number of bindings for a provider
 func GetBindingCountByProviderId(providerId int) (int64, error) {
 	var count int64
-	err := DB.Model(&UserOAuthBinding{}).Where("provider_id = ?", providerId).Count(&count).Error
+	err := DB.Model(&UserOAuthBinding{}).Where(quoteModelIdentifier(DB, "provider_id")+" = ?", providerId).Count(&count).Error
 	return count, err
 }

@@ -32,7 +32,7 @@ func GenerateAccessToken(c *gin.Context) {
 		return
 	}
 	var existing int64
-	if err := model.DB.Model(&model.User{}).Where("access_token = ?", key).Count(&existing).Error; err != nil {
+	if err := model.DB.Model(&model.User{}).Where(model.QuoteSQLIdentifier(model.DB, "access_token")+" = ?", key).Count(&existing).Error; err != nil {
 		writeSecurityOperationError(c, err)
 		return
 	}

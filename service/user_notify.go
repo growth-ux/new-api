@@ -25,7 +25,7 @@ func NotifyUpstreamModelUpdateWatchers(subject string, content string) {
 	var users []model.User
 	if err := model.DB.
 		Select("id", "email", "role", "status", "setting").
-		Where("status = ? AND role >= ?", common.UserStatusEnabled, common.RoleAdminUser).
+		Where(model.QuoteSQLIdentifier(model.DB, "status")+" = ? AND "+model.QuoteSQLIdentifier(model.DB, "role")+" >= ?", common.UserStatusEnabled, common.RoleAdminUser).
 		Find(&users).Error; err != nil {
 		common.SysLog(fmt.Sprintf("failed to query upstream update notification users: %s", err.Error()))
 		return

@@ -75,10 +75,10 @@ func MetadataRecordVersion(local *Model, localVendor, upstreamVendor *Vendor) st
 func GetMetadataSyncState(db *gorm.DB) (map[string]*Model, map[string]*Vendor, error) {
 	var models []*Model
 	var vendors []*Vendor
-	if err := db.Session(&gorm.Session{}).Order("id").Find(&models).Error; err != nil {
+	if err := db.Session(&gorm.Session{}).Order(quoteModelIdentifier(DB, "id")).Find(&models).Error; err != nil {
 		return nil, nil, err
 	}
-	if err := db.Session(&gorm.Session{}).Order("id").Find(&vendors).Error; err != nil {
+	if err := db.Session(&gorm.Session{}).Order(quoteModelIdentifier(DB, "id")).Find(&vendors).Error; err != nil {
 		return nil, nil, err
 	}
 	modelMap := make(map[string]*Model, len(models))
@@ -262,7 +262,7 @@ func ApplyMetadataSync(updates []MetadataSyncUpdate, upstreamVendors map[string]
 				}
 				result.CreatedModels = append(result.CreatedModels, update.ModelName)
 			} else {
-				if err := tx.Model(&Model{}).Where("id = ?", locals[update.ModelName].Id).Updates(fields).Error; err != nil {
+				if err := tx.Model(&Model{}).Where(quoteModelIdentifier(DB, "id")+" = ?", locals[update.ModelName].Id).Updates(fields).Error; err != nil {
 					return err
 				}
 				result.UpdatedModels = append(result.UpdatedModels, update.MetadataSyncSelection)

@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -202,7 +203,7 @@ func SearchModelsWithChannels(keyword, vendor, status, syncOfficial string, offs
 			return nil, 0, err
 		}
 		var exactNames []string
-		if err := DB.Model(&Model{}).Where("name_rule = ?", NameRuleExact).Pluck("model_name", &exactNames).Error; err != nil {
+		if err := DB.Model(&Model{}).Where(quoteModelIdentifier(DB, "name_rule")+" = ?", NameRuleExact).Pluck("model_name", &exactNames).Error; err != nil {
 			return nil, 0, err
 		}
 		for _, name := range exactNames {
@@ -245,7 +246,7 @@ func (mi *Model) Insert() error {
 			return err
 		}
 		mi.Status, mi.SyncOfficial = status, syncOfficial
-		return tx.Model(&Model{}).Where("id = ?", mi.Id).Updates(map[string]any{"status": status, "sync_official": syncOfficial}).Error
+		return tx.Model(&Model{}).Where(quoteModelIdentifier(DB, "id")+" = ?", mi.Id).Updates(map[string]any{"status": status, "sync_official": syncOfficial}).Error
 	})
 }
 
@@ -254,7 +255,7 @@ func IsModelNameDuplicated(id int, name string) (bool, error) {
 		return false, nil
 	}
 	var cnt int64
-	err := DB.Model(&Model{}).Where("model_name = ? AND id <> ?", name, id).Count(&cnt).Error
+	err := DB.Model(&Model{}).Where(quoteModelIdentifier(DB, "model_name")+" = ? AND "+quoteModelIdentifier(DB, "id")+" <> ?", name, id).Count(&cnt).Error
 	return cnt > 0, err
 }
 
@@ -264,7 +265,7 @@ func (mi *Model) Update() error {
 			return err
 		}
 		mi.UpdatedTime = common.GetTimestamp()
-		return tx.Model(&Model{}).Where("id = ?", mi.Id).
+		return tx.Model(&Model{}).Where(quoteModelIdentifier(DB, "id")+" = ?", mi.Id).
 			Select("model_name", "description", "icon", "tags", "vendor_id", "endpoints", "status", "sync_official", "name_rule", "updated_time").Updates(mi).Error
 	})
 }
@@ -302,7 +303,7 @@ func DeleteModelMetadata(ids []int, removeFromChannels, removePricing bool) (Mod
 	names := make(map[string]struct{}, len(modelIDs))
 	deleteRecords := func(tx *gorm.DB) error {
 		var records []Model
-		if err := lockForUpdate(tx).Where("id IN ?", modelIDs).Order("id").Find(&records).Error; err != nil {
+		if err := lockForUpdate(tx).Where(quoteModelIdentifier(DB, "id")+" IN ?", modelIDs).Order(quoteModelIdentifier(DB, "id")).Find(&records).Error; err != nil {
 			return err
 		}
 		if len(records) != len(modelIDs) {
@@ -318,7 +319,7 @@ func DeleteModelMetadata(ids []int, removeFromChannels, removePricing bool) (Mod
 			var channels []Channel
 			// Read only routing fields. Lock channels in a consistent order, then
 			// update models and abilities in the same transaction as metadata.
-			if err := lockForUpdate(tx).Select("id", "models", "status", "group", "priority", "weight", "tag").Order("id").Find(&channels).Error; err != nil {
+			if err := lockForUpdate(tx).Select("id", "models", "status", "group", "priority", "weight", "tag").Order(quoteModelIdentifier(DB, "id")).Find(&channels).Error; err != nil {
 				return err
 			}
 			for _, channel := range channels {
@@ -333,7 +334,7 @@ func DeleteModelMetadata(ids []int, removeFromChannels, removePricing bool) (Mod
 					continue
 				}
 				channel.Models = strings.Join(remaining, ",")
-				if err := tx.Model(&Channel{}).Where("id = ?", channel.Id).Update("models", channel.Models).Error; err != nil {
+				if err := tx.Model(&Channel{}).Where(quoteModelIdentifier(DB, "id")+" = ?", channel.Id).Update("models", channel.Models).Error; err != nil {
 					return err
 				}
 				if err := channel.UpdateAbilities(tx); err != nil {
@@ -342,7 +343,7 @@ func DeleteModelMetadata(ids []int, removeFromChannels, removePricing bool) (Mod
 				result.UpdatedChannels++
 			}
 		}
-		if err := tx.Where("id IN ?", modelIDs).Delete(&Model{}).Error; err != nil {
+		if err := tx.Where(quoteModelIdentifier(DB, "id")+" IN ?", modelIDs).Delete(&Model{}).Error; err != nil {
 			return err
 		}
 		result.DeletedCount = len(records)
@@ -388,8 +389,8 @@ func GetVendorModelCounts() (map[int64]int64, error) {
 		Count    int64
 	}
 	if err := DB.Model(&Model{}).
-		Select("vendor_id as vendor_id, count(*) as count").
-		Group("vendor_id").
+		Select(fmt.Sprintf("%s AS %s, count(*) AS %s", quoteModelIdentifier(DB, "vendor_id"), quoteModelIdentifier(DB, "vendor_id"), quoteModelIdentifier(DB, "count"))).
+		Group(quoteModelIdentifier(DB, "vendor_id")).
 		Scan(&stats).Error; err != nil {
 		return nil, err
 	}
@@ -414,10 +415,10 @@ type ModelConnection struct {
 func GetModelConnections() ([]ModelConnection, error) {
 	var connections []ModelConnection
 	err := DB.Table("abilities").
-		Select("abilities.*, channels.type as channel_type, channels.name as channel_name").
-		Joins("JOIN channels ON abilities.channel_id = channels.id").
-		Where("abilities.enabled = ? AND channels.status = ?", true, common.ChannelStatusEnabled).
-		Order("abilities.model, abilities.channel_id").
+		Select(fmt.Sprintf("%s.*, %s AS %s, %s AS %s", quoteModelIdentifier(DB, "abilities"), quoteModelIdentifier(DB, "channels.type"), quoteModelIdentifier(DB, "channel_type"), quoteModelIdentifier(DB, "channels.name"), quoteModelIdentifier(DB, "channel_name"))).
+		Joins("JOIN "+quoteModelIdentifier(DB, "channels")+" ON "+quoteModelIdentifier(DB, "abilities")+"."+quoteModelIdentifier(DB, "channel_id")+" = "+quoteModelIdentifier(DB, "channels")+"."+quoteModelIdentifier(DB, "id")).
+		Where(quoteModelIdentifier(DB, "abilities")+"."+quoteModelIdentifier(DB, "enabled")+" = ? AND "+quoteModelIdentifier(DB, "channels")+"."+quoteModelIdentifier(DB, "status")+" = ?", true, common.ChannelStatusEnabled).
+		Order(quoteModelIdentifier(DB, "abilities") + "." + quoteModelIdentifier(DB, "model") + ", " + quoteModelIdentifier(DB, "abilities") + "." + quoteModelIdentifier(DB, "channel_id")).
 		Scan(&connections).Error
 	return connections, err
 }
@@ -453,16 +454,16 @@ func GetPreferredModelOwnerChannelTypes(modelNames []string, groups []string) (m
 	var rows []row
 
 	query := DB.Table("abilities").
-		Select("abilities.model as model, channels.type as channel_type").
-		Joins("JOIN channels ON abilities.channel_id = channels.id").
-		Where("abilities.model IN ? AND abilities.enabled = ? AND channels.status = ?", modelNames, true, common.ChannelStatusEnabled).
-		Order("COALESCE(abilities.priority, 0) DESC").
-		Order("abilities.weight DESC").
-		Order("abilities.channel_id ASC")
+		Select(fmt.Sprintf("%s AS %s, %s AS %s", quoteModelIdentifier(DB, "abilities.model"), quoteModelIdentifier(DB, "model"), quoteModelIdentifier(DB, "channels.type"), quoteModelIdentifier(DB, "channel_type"))).
+		Joins("JOIN "+quoteModelIdentifier(DB, "channels")+" ON "+quoteModelIdentifier(DB, "abilities")+"."+quoteModelIdentifier(DB, "channel_id")+" = "+quoteModelIdentifier(DB, "channels")+"."+quoteModelIdentifier(DB, "id")).
+		Where(quoteModelIdentifier(DB, "abilities")+"."+quoteModelIdentifier(DB, "model")+" IN ? AND "+quoteModelIdentifier(DB, "abilities")+"."+quoteModelIdentifier(DB, "enabled")+" = ? AND "+quoteModelIdentifier(DB, "channels")+"."+quoteModelIdentifier(DB, "status")+" = ?", modelNames, true, common.ChannelStatusEnabled).
+		Order("COALESCE(" + quoteModelIdentifier(DB, "abilities") + "." + quoteModelIdentifier(DB, "priority") + ", 0) DESC").
+		Order(quoteModelIdentifier(DB, "abilities") + "." + quoteModelIdentifier(DB, "weight") + " DESC").
+		Order(quoteModelIdentifier(DB, "abilities") + "." + quoteModelIdentifier(DB, "channel_id") + " ASC")
 
 	groups = normalizeLookupValues(groups)
 	if len(groups) > 0 {
-		query = query.Where("abilities."+commonGroupCol+" IN ?", groups)
+		query = query.Where(quoteModelIdentifier(DB, "abilities")+"."+commonGroupCol+" IN ?", groups)
 	}
 
 	if err := query.Scan(&rows).Error; err != nil {
@@ -483,26 +484,26 @@ func SearchModels(keyword string, vendor string, status string, syncOfficial str
 	db := DB.Model(&Model{})
 	if keyword != "" {
 		like := "%" + keyword + "%"
-		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
+		db = db.Where(quoteModelIdentifier(DB, "model_name")+" LIKE ? OR "+quoteModelIdentifier(DB, "description")+" LIKE ? OR "+quoteModelIdentifier(DB, "tags")+" LIKE ?", like, like, like)
 	}
 	if vendor != "" {
 		if vid, err := strconv.Atoi(vendor); err == nil {
-			db = db.Where("models.vendor_id = ?", vid)
+			db = db.Where(quoteModelIdentifier(DB, "models")+"."+quoteModelIdentifier(DB, "vendor_id")+" = ?", vid)
 		} else {
-			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
+			db = db.Joins("JOIN "+quoteModelIdentifier(DB, "vendors")+" ON "+quoteModelIdentifier(DB, "vendors")+"."+quoteModelIdentifier(DB, "id")+" = "+quoteModelIdentifier(DB, "models")+"."+quoteModelIdentifier(DB, "vendor_id")).Where(quoteModelIdentifier(DB, "vendors")+"."+quoteModelIdentifier(DB, "name")+" LIKE ?", "%"+vendor+"%")
 		}
 	}
 	if statusValue, ok := parseModelStatusFilter(status); ok {
-		db = db.Where("models.status = ?", statusValue)
+		db = db.Where(quoteModelIdentifier(DB, "models")+"."+quoteModelIdentifier(DB, "status")+" = ?", statusValue)
 	}
 	if syncValue, ok := parseModelSyncFilter(syncOfficial); ok {
-		db = db.Where("models.sync_official = ?", syncValue)
+		db = db.Where(quoteModelIdentifier(DB, "models")+"."+quoteModelIdentifier(DB, "sync_official")+" = ?", syncValue)
 	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
+	if err := db.Order(quoteModelIdentifier(DB, "models") + "." + quoteModelIdentifier(DB, "id") + " DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
 		return nil, 0, err
 	}
 	return models, total, nil

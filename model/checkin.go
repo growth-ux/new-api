@@ -32,9 +32,9 @@ func (Checkin) TableName() string {
 // GetUserCheckinRecords 获取用户在指定日期范围内的签到记录
 func GetUserCheckinRecords(userId int, startDate, endDate string) ([]Checkin, error) {
 	var records []Checkin
-	err := DB.Where("user_id = ? AND checkin_date >= ? AND checkin_date <= ?",
+	err := DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "checkin_date")+" >= ? AND "+quoteModelIdentifier(DB, "checkin_date")+" <= ?",
 		userId, startDate, endDate).
-		Order("checkin_date DESC").
+		Order(quoteModelIdentifier(DB, "checkin_date") + " DESC").
 		Find(&records).Error
 	return records, err
 }
@@ -44,7 +44,7 @@ func HasCheckedInToday(userId int) (bool, error) {
 	today := time.Now().Format("2006-01-02")
 	var count int64
 	err := DB.Model(&Checkin{}).
-		Where("user_id = ? AND checkin_date = ?", userId, today).
+		Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "checkin_date")+" = ?", userId, today).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -101,8 +101,8 @@ func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) 
 		}
 
 		// 步骤2: 在事务中增加用户额度
-		if err := tx.Model(&User{}).Where("id = ?", userId).
-			Update("quota", gorm.Expr("quota + ?", quotaAwarded)).Error; err != nil {
+		if err := tx.Model(&User{}).Where(quoteModelIdentifier(tx, "id")+" = ?", userId).
+			Update("quota", gorm.Expr(quoteModelIdentifier(tx, "quota")+" + ?", quotaAwarded)).Error; err != nil {
 			return errors.New("签到失败：更新额度出错")
 		}
 
@@ -166,8 +166,13 @@ func GetUserCheckinStats(userId int, month string) (map[string]any, error) {
 	// 获取用户所有时间的签到统计
 	var totalCheckins int64
 	var totalQuota int64
-	DB.Model(&Checkin{}).Where("user_id = ?", userId).Count(&totalCheckins)
-	DB.Model(&Checkin{}).Where("user_id = ?", userId).Select("COALESCE(SUM(quota_awarded), 0)").Scan(&totalQuota)
+	if err := DB.Model(&Checkin{}).Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId).Count(&totalCheckins).Error; err != nil {
+		return nil, err
+	}
+	if err := DB.Model(&Checkin{}).Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId).
+		Select("COALESCE(SUM(" + quoteModelIdentifier(DB, "quota_awarded") + "), 0)").Scan(&totalQuota).Error; err != nil {
+		return nil, err
+	}
 
 	return map[string]any{
 		"total_quota":      totalQuota,      // 所有时间累计获得的额度

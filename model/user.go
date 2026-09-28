@@ -147,7 +147,7 @@ func UpdateUserAccessToken(id int, token string) error {
 	if id == 0 {
 		return errors.New("id 为空！")
 	}
-	result := DB.Model(&User{}).Where("id = ?", id).Updates(map[string]any{
+	result := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Updates(map[string]any{
 		"access_token": token, "access_token_created_at": common.GetTimestamp(),
 	})
 	if result.Error != nil {
@@ -171,7 +171,7 @@ func RevokeUserAccessToken(id int) (string, error) {
 		if tokenRef == "" {
 			return nil
 		}
-		return tx.Model(&User{}).Where("id = ?", id).Updates(map[string]any{"access_token": nil, "access_token_created_at": nil}).Error
+		return tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Updates(map[string]any{"access_token": nil, "access_token_created_at": nil}).Error
 	})
 	return tokenRef, err
 }
@@ -205,7 +205,7 @@ func UpdateUserSetting(userId int, setting dto.UserSetting) error {
 		return err
 	}
 	settingValue := string(settingBytes)
-	if err = DB.Model(&User{}).Where("id = ?", userId).Update("setting", settingValue).Error; err != nil {
+	if err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", userId).Update("setting", settingValue).Error; err != nil {
 		return err
 	}
 	return updateUserSettingCache(userId, settingValue)
@@ -232,7 +232,7 @@ func UpdateUserBindColumn(userId int, column string, value string) error {
 	if !userBindColumns[column] {
 		return fmt.Errorf("invalid user bind column: %s", column)
 	}
-	return DB.Model(&User{}).Where("id = ?", userId).Update(column, value).Error
+	return DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", userId).Update(column, value).Error
 }
 
 // 根据用户角色生成默认的边栏配置
@@ -306,9 +306,9 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	var err error
 	email = NormalizeEmail(email)
 	if email == "" {
-		err = DB.Unscoped().First(&user, "username = ?", username).Error
+		err = DB.Unscoped().Where(clause.Eq{Column: clause.Column{Name: "username"}, Value: username}).First(&user).Error
 	} else {
-		err = DB.Unscoped().First(&user, "username = ? or LOWER(email) = ?", username, email).Error
+		err = DB.Unscoped().Where(quoteModelIdentifier(DB, "username")+" = ? or LOWER("+quoteModelIdentifier(DB, "email")+") = ?", username, email).First(&user).Error
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -330,7 +330,7 @@ func emailQuery(tx *gorm.DB, email string) *gorm.DB {
 	if tx == nil {
 		tx = DB
 	}
-	return tx.Unscoped().Model(&User{}).Where("LOWER(email) = ?", NormalizeEmail(email))
+	return tx.Unscoped().Model(&User{}).Where("LOWER("+quoteModelIdentifier(tx, "email")+") = ?", NormalizeEmail(email))
 }
 
 func CountUsersByEmail(email string) (int64, error) {
@@ -350,7 +350,7 @@ func IsEmailAvailable(email string, excludeUserID int) (bool, error) {
 	}
 	query := emailQuery(DB, email)
 	if excludeUserID > 0 {
-		query = query.Where("id <> ?", excludeUserID)
+		query = query.Where(clause.Neq{Column: clause.Column{Name: "id"}, Value: excludeUserID})
 	}
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
@@ -473,29 +473,29 @@ func SearchUsers(keyword string, group string, role *int, status *int, startIdx 
 	query := tx.Unscoped().Model(&User{})
 
 	// 构建搜索条件
-	likeCondition := "username LIKE ? OR email LIKE ? OR display_name LIKE ?"
+	likeCondition := quoteModelIdentifier(tx, "username") + " LIKE ? OR " + quoteModelIdentifier(tx, "email") + " LIKE ? OR " + quoteModelIdentifier(tx, "display_name") + " LIKE ?"
 	likeArgs := []any{"%" + keyword + "%", "%" + keyword + "%", "%" + keyword + "%"}
 
 	// 尝试将关键字转换为整数ID
 	keywordInt, err := strconv.Atoi(keyword)
 	if err == nil {
 		// 如果是数字，同时搜索ID和其他字段
-		likeCondition = "id = ? OR " + likeCondition
+		likeCondition = quoteModelIdentifier(tx, "id") + " = ? OR " + likeCondition
 		likeArgs = append([]any{keywordInt}, likeArgs...)
 	}
 
 	query = query.Where("("+likeCondition+")", likeArgs...)
 	if group != "" {
-		query = query.Where(commonGroupCol+" = ?", group)
+		query = query.Where(quoteModelIdentifier(tx, commonGroupCol)+" = ?", group)
 	}
 	if role != nil {
-		query = query.Where("role = ?", *role)
+		query = query.Where(clause.Eq{Column: clause.Column{Name: "role"}, Value: *role})
 	}
 	if status != nil {
 		if *status == -1 {
-			query = query.Where("deleted_at IS NOT NULL")
+			query = query.Where(quoteModelIdentifier(tx, "deleted_at") + " IS NOT NULL")
 		} else {
-			query = query.Where("deleted_at IS NULL").Where("status = ?", *status)
+			query = query.Where(quoteModelIdentifier(tx, "deleted_at") + " IS NULL").Where(clause.Eq{Column: clause.Column{Name: "status"}, Value: *status})
 		}
 	}
 
@@ -529,9 +529,9 @@ func GetUserById(id int, selectAll bool) (*User, error) {
 	user := User{Id: id}
 	var err error = nil
 	if selectAll {
-		err = DB.First(&user, "id = ?", id).Error
+		err = DB.Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(&user).Error
 	} else {
-		err = DB.Omit("password", "access_token").First(&user, "id = ?", id).Error
+		err = DB.Omit("password", "access_token").Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(&user).Error
 	}
 	return &user, err
 }
@@ -552,8 +552,8 @@ func GetSelfUserById(id int) (*User, error) {
 		"group", "quota", "used_quota", "request_count", "aff_code", "aff_count",
 		"aff_quota", "aff_history", "inviter_id", "linux_do_id", "setting",
 		"stripe_customer", "auth_version",
-		"CASE WHEN password <> '' THEN 1 ELSE 0 END AS has_password",
-	}).First(&profile, "id = ?", id).Error
+		"CASE WHEN " + quoteModelIdentifier(DB, "password") + " <> '' THEN 1 ELSE 0 END AS " + quoteModelIdentifier(DB, "has_password"),
+	}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(&profile).Error
 	profile.User.HasPassword = profile.HasPassword
 	return &profile.User, err
 }
@@ -563,7 +563,7 @@ func GetUserIdByAffCode(affCode string) (int, error) {
 		return 0, errors.New("affCode 为空！")
 	}
 	var user User
-	err := DB.Select("id").First(&user, "aff_code = ?", affCode).Error
+	err := DB.Select("id").Where(clause.Eq{Column: clause.Column{Name: "aff_code"}, Value: affCode}).First(&user).Error
 	return user.Id, err
 }
 
@@ -584,10 +584,10 @@ func HardDeleteUserById(id int) error {
 }
 
 func inviteUser(inviterId int) error {
-	result := DB.Model(&User{}).Where("id = ?", inviterId).Updates(map[string]any{
-		"aff_count":   gorm.Expr("aff_count + ?", 1),
-		"aff_quota":   gorm.Expr("aff_quota + ?", common.QuotaForInviter),
-		"aff_history": gorm.Expr("aff_history + ?", common.QuotaForInviter),
+	result := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", inviterId).Updates(map[string]any{
+		"aff_count":   gorm.Expr(quoteModelIdentifier(DB, "aff_count")+" + ?", 1),
+		"aff_quota":   gorm.Expr(quoteModelIdentifier(DB, "aff_quota")+" + ?", common.QuotaForInviter),
+		"aff_history": gorm.Expr(quoteModelIdentifier(DB, "aff_history")+" + ?", common.QuotaForInviter),
 	})
 	if result.Error != nil {
 		return result.Error
@@ -674,7 +674,7 @@ func ensureEmailAvailableWithTx(tx *gorm.DB, email string, excludeUserID int) er
 	}
 	query := emailQuery(tx, email)
 	if excludeUserID > 0 {
-		query = query.Where("id <> ?", excludeUserID)
+		query = query.Where(clause.Neq{Column: clause.Column{Name: "id"}, Value: excludeUserID})
 	}
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
@@ -716,7 +716,7 @@ func (user *User) finishInsert(inviterId int) {
 	// 用户创建成功后，根据角色初始化边栏配置
 	// 需要重新获取用户以确保有正确的ID和Role
 	var createdUser User
-	if err := DB.Where("username = ?", user.Username).First(&createdUser).Error; err == nil {
+	if err := DB.Where(clause.Eq{Column: clause.Column{Name: "username"}, Value: user.Username}).First(&createdUser).Error; err == nil {
 		// 生成基于角色的默认边栏配置
 		defaultSidebarConfig := generateDefaultSidebarConfigForRole(createdUser.Role)
 		if defaultSidebarConfig != "" {
@@ -774,7 +774,7 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 	// 用户创建成功后，根据角色初始化边栏配置
 	var createdUser User
-	if err := DB.Where("id = ?", user.Id).First(&createdUser).Error; err == nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).First(&createdUser).Error; err == nil {
 		defaultSidebarConfig := generateDefaultSidebarConfigForRole(createdUser.Role)
 		if defaultSidebarConfig != "" {
 			currentSetting := createdUser.GetSetting()
@@ -802,7 +802,7 @@ func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 
 func (user *User) Update(updatePassword bool) error {
 	var previousAuthVersion int64
-	if err := DB.Model(&User{}).Where("id = ?", user.Id).Select("auth_version").Find(&previousAuthVersion).Error; err != nil {
+	if err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).Select("auth_version").Find(&previousAuthVersion).Error; err != nil {
 		return err
 	}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
@@ -864,7 +864,7 @@ func (user *User) UpdateWithTx(tx *gorm.DB, updatePassword bool) error {
 
 func (user *User) Edit(updatePassword bool) error {
 	var previousAuthVersion int64
-	if err := DB.Model(&User{}).Where("id = ?", user.Id).Select("auth_version").Find(&previousAuthVersion).Error; err != nil {
+	if err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).Select("auth_version").Find(&previousAuthVersion).Error; err != nil {
 		return err
 	}
 	if err := DB.Transaction(func(tx *gorm.DB) error {
@@ -940,7 +940,7 @@ func (user *User) ClearBinding(bindingType string) error {
 	}
 
 	if err := DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&User{}).Where("id = ?", user.Id).Update(column, "").Error; err != nil {
+		if err := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).Update(column, "").Error; err != nil {
 			return err
 		}
 		if bindingType == ExternalIdentityProviderTelegram {
@@ -951,7 +951,7 @@ func (user *User) ClearBinding(bindingType string) error {
 		return err
 	}
 
-	if err := DB.Where("id = ?", user.Id).First(user).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).First(user).Error; err != nil {
 		return err
 	}
 
@@ -978,7 +978,7 @@ func (user *User) delete(identity *AuthSessionIdentity) error {
 				return err
 			}
 			var role int
-			if err := tx.Model(&User{}).Where("id = ?", user.Id).Select("role").Scan(&role).Error; err != nil {
+			if err := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).Select("role").Scan(&role).Error; err != nil {
 				return err
 			}
 			if role == common.RoleRootUser {
@@ -1016,7 +1016,7 @@ func (user *User) HardDelete() error {
 			return err
 		}
 		if common.RedisEnabled {
-			if err := tx.Unscoped().Select("id", commonKeyCol).Where("user_id = ?", user.Id).Find(&tokens).Error; err != nil {
+			if err := tx.Unscoped().Select("id", commonKeyCol).Where(quoteModelIdentifier(DB, "user_id")+" = ?", user.Id).Find(&tokens).Error; err != nil {
 				return err
 			}
 		}
@@ -1052,7 +1052,7 @@ func deleteUserAuthenticationData(tx *gorm.DB, userId int) error {
 		&PasskeyCredential{},
 		&Token{},
 	} {
-		if err := tx.Unscoped().Where("user_id = ?", userId).Delete(authenticationData).Error; err != nil {
+		if err := tx.Unscoped().Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId).Delete(authenticationData).Error; err != nil {
 			return err
 		}
 	}
@@ -1070,7 +1070,7 @@ func (user *User) ValidateAndFill() (err error) {
 		return ErrUserEmptyCredentials
 	}
 	// find by username or email
-	err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	err = DB.Where(quoteModelIdentifier(DB, "username")+" = ? OR "+quoteModelIdentifier(DB, "email")+" = ?", username, username).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidCredentials
@@ -1157,7 +1157,7 @@ func GetUniqueUserByEmail(email string) (*User, error) {
 		return nil, ErrEmailNotFound
 	}
 	var users []User
-	if err := DB.Where("LOWER(email) = ?", email).Limit(2).Find(&users).Error; err != nil {
+	if err := DB.Where("LOWER("+quoteModelIdentifier(DB, "email")+") = ?", email).Limit(2).Find(&users).Error; err != nil {
 		return nil, err
 	}
 	switch len(users) {
@@ -1171,23 +1171,23 @@ func GetUniqueUserByEmail(email string) (*User, error) {
 }
 
 func IsWeChatIdAlreadyTaken(wechatId string) bool {
-	return DB.Unscoped().Where("wechat_id = ?", wechatId).Find(&User{}).RowsAffected == 1
+	return DB.Unscoped().Where(clause.Eq{Column: clause.Column{Name: "wechat_id"}, Value: wechatId}).Find(&User{}).RowsAffected == 1
 }
 
 func IsGitHubIdAlreadyTaken(githubId string) bool {
-	return DB.Unscoped().Where("github_id = ?", githubId).Find(&User{}).RowsAffected == 1
+	return DB.Unscoped().Where(clause.Eq{Column: clause.Column{Name: "github_id"}, Value: githubId}).Find(&User{}).RowsAffected == 1
 }
 
 func IsDiscordIdAlreadyTaken(discordId string) bool {
-	return DB.Unscoped().Where("discord_id = ?", discordId).Find(&User{}).RowsAffected == 1
+	return DB.Unscoped().Where(clause.Eq{Column: clause.Column{Name: "discord_id"}, Value: discordId}).Find(&User{}).RowsAffected == 1
 }
 
 func IsOidcIdAlreadyTaken(oidcId string) bool {
-	return DB.Where("oidc_id = ?", oidcId).Find(&User{}).RowsAffected == 1
+	return DB.Where(clause.Eq{Column: clause.Column{Name: "oidc_id"}, Value: oidcId}).Find(&User{}).RowsAffected == 1
 }
 
 func IsTelegramIdAlreadyTaken(telegramId string) bool {
-	return DB.Unscoped().Where("telegram_id = ?", telegramId).Find(&User{}).RowsAffected == 1
+	return DB.Unscoped().Where(clause.Eq{Column: clause.Column{Name: "telegram_id"}, Value: telegramId}).Find(&User{}).RowsAffected == 1
 }
 
 func ResetUserPasswordByEmail(email string, password string) error {
@@ -1206,7 +1206,7 @@ func ResetUserPasswordByEmail(email string, password string) error {
 		if _, err := IncrementUserAuthVersionWithTx(tx, user.Id); err != nil {
 			return err
 		}
-		return tx.Model(&User{}).Where("id = ?", user.Id).Update("password", hashedPassword).Error
+		return tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", user.Id).Update("password", hashedPassword).Error
 	}); err != nil {
 		return err
 	}
@@ -1222,7 +1222,7 @@ func IsAdmin(userId int) bool {
 		return false
 	}
 	var user User
-	err := DB.Where("id = ?", userId).Select("role").Find(&user).Error
+	err := DB.Where(quoteModelIdentifier(DB, "id")+" = ?", userId).Select("role").Find(&user).Error
 	if err != nil {
 		common.SysLog("no such user " + err.Error())
 		return false
@@ -1236,7 +1236,7 @@ func ValidateAccessToken(token string) (*User, error) {
 	}
 	token = strings.Replace(token, "Bearer ", "", 1)
 	user := &User{}
-	err := DB.Where("access_token = ?", token).First(user).Error
+	err := DB.Where(quoteModelIdentifier(DB, "access_token")+" = ?", token).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -1251,7 +1251,7 @@ func GetUserQuota(id int, fromDB bool) (quota int, err error) {
 	if !fromDB && common.RedisEnabled {
 		return getUserQuotaCache(id)
 	}
-	err = DB.Model(&User{}).Where("id = ?", id).Select("quota").Find(&quota).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Select("quota").Find(&quota).Error
 	if err != nil {
 		return 0, err
 	}
@@ -1260,12 +1260,12 @@ func GetUserQuota(id int, fromDB bool) (quota int, err error) {
 }
 
 func GetUserUsedQuota(id int) (quota int, err error) {
-	err = DB.Model(&User{}).Where("id = ?", id).Select("used_quota").Find(&quota).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Select("used_quota").Find(&quota).Error
 	return quota, err
 }
 
 func GetUserEmail(id int) (email string, err error) {
-	err = DB.Model(&User{}).Where("id = ?", id).Select("email").Find(&email).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Select("email").Find(&email).Error
 	return email, err
 }
 
@@ -1289,7 +1289,7 @@ func GetUserGroup(id int, fromDB bool) (group string, err error) {
 		// Don't return error - fall through to DB
 	}
 	fromDB = true
-	err = DB.Model(&User{}).Where("id = ?", id).Select(commonGroupCol).Find(&group).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Select(commonGroupCol).Find(&group).Error
 	if err != nil {
 		return "", err
 	}
@@ -1320,7 +1320,7 @@ func GetUserSetting(id int, fromDB bool) (settingMap dto.UserSetting, err error)
 	fromDB = true
 	// can be nil setting
 	var safeSetting sql.NullString
-	err = DB.Model(&User{}).Where("id = ?", id).Select("setting").Find(&safeSetting).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Select("setting").Find(&safeSetting).Error
 	if err != nil {
 		return settingMap, err
 	}
@@ -1364,8 +1364,8 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 
 func increaseUserQuota(id int, quota int) (err error) {
 	result := DB.Model(&User{}).
-		Where("id = ? AND quota <= ?", id, common.MaxWalletQuota-quota).
-		Update("quota", gorm.Expr("quota + ?", quota))
+		Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "quota")+" <= ?", id, common.MaxWalletQuota-quota).
+		Update("quota", gorm.Expr(quoteModelIdentifier(DB, "quota")+" + ?", quota))
 	if result.Error != nil {
 		return result.Error
 	}
@@ -1373,7 +1373,7 @@ func increaseUserQuota(id int, quota int) (err error) {
 		return nil
 	}
 	var count int64
-	if err := DB.Model(&User{}).Where("id = ?", id).Count(&count).Error; err != nil {
+	if err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
@@ -1400,7 +1400,7 @@ func DecreaseUserQuota(id int, quota int, db bool) (err error) {
 }
 
 func decreaseUserQuota(id int, quota int) (err error) {
-	err = DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota - ?", quota)).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Update("quota", gorm.Expr(quoteModelIdentifier(DB, "quota")+" - ?", quota)).Error
 	if err != nil {
 		return err
 	}
@@ -1419,17 +1419,17 @@ func DeltaUpdateUserQuota(id int, delta int) (err error) {
 }
 
 //func GetRootUserEmail() (email string) {
-//	DB.Model(&User{}).Where("role = ?", common.RoleRootUser).Select("email").Find(&email)
+//	DB.Model(&User{}).Where(quoteModelIdentifier(DB, "role")+" = ?", common.RoleRootUser).Select("email").Find(&email)
 //	return email
 //}
 
 func GetRootUser() (user *User) {
-	DB.Where("role = ?", common.RoleRootUser).First(&user)
+	DB.Where(quoteModelIdentifier(DB, "role")+" = ?", common.RoleRootUser).First(&user)
 	return user
 }
 
 func UpdateUserLastLoginAt(id int) {
-	if err := DB.Model(&User{}).Where("id = ?", id).Update("last_login_at", common.GetTimestamp()).Error; err != nil {
+	if err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Update("last_login_at", common.GetTimestamp()).Error; err != nil {
 		common.SysLog("failed to update user last_login_at: " + err.Error())
 	}
 }
@@ -1449,16 +1449,16 @@ func UpdateUserUsedQuota(id int, quota int) {
 		addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
 		return
 	}
-	if err := DB.Model(&User{}).Where("id = ?", id).Update("used_quota", gorm.Expr("used_quota + ?", quota)).Error; err != nil {
+	if err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Update("used_quota", gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" + ?", quota)).Error; err != nil {
 		common.SysLog("failed to update user used quota: " + err.Error())
 	}
 }
 
 func updateUserUsedQuotaAndRequestCount(id int, quota int, count int) {
-	err := DB.Model(&User{}).Where("id = ?", id).Updates(
+	err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Updates(
 		map[string]any{
-			"used_quota":    gorm.Expr("used_quota + ?", quota),
-			"request_count": gorm.Expr("request_count + ?", count),
+			"used_quota":    gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" + ?", quota),
+			"request_count": gorm.Expr(quoteModelIdentifier(DB, "request_count")+" + ?", count),
 		},
 	).Error
 	if err != nil {
@@ -1477,11 +1477,11 @@ func updateUserQuotaUsedQuotaAndRequestCount(id int, quota int, usedQuota int, r
 		return
 	}
 
-	err := DB.Model(&User{}).Where("id = ?", id).Updates(
+	err := DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Updates(
 		map[string]any{
-			"quota":         gorm.Expr("quota + ?", quota),
-			"used_quota":    gorm.Expr("used_quota + ?", usedQuota),
-			"request_count": gorm.Expr("request_count + ?", requestCount),
+			"quota":         gorm.Expr(quoteModelIdentifier(DB, "quota")+" + ?", quota),
+			"used_quota":    gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" + ?", usedQuota),
+			"request_count": gorm.Expr(quoteModelIdentifier(DB, "request_count")+" + ?", requestCount),
 		},
 	).Error
 	if err != nil {
@@ -1509,7 +1509,7 @@ func GetUsernameById(id int, fromDB bool) (username string, err error) {
 		// Don't return error - fall through to DB
 	}
 	fromDB = true
-	err = DB.Model(&User{}).Where("id = ?", id).Select("username").Find(&username).Error
+	err = DB.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Select("username").Find(&username).Error
 	if err != nil {
 		return "", err
 	}
@@ -1519,7 +1519,7 @@ func GetUsernameById(id int, fromDB bool) (username string, err error) {
 
 func IsLinuxDOIdAlreadyTaken(linuxDOId string) bool {
 	var user User
-	err := DB.Unscoped().Where("linux_do_id = ?", linuxDOId).First(&user).Error
+	err := DB.Unscoped().Where(quoteModelIdentifier(DB, "linux_do_id")+" = ?", linuxDOId).First(&user).Error
 	return !errors.Is(err, gorm.ErrRecordNotFound)
 }
 
@@ -1527,13 +1527,13 @@ func (user *User) FillUserByLinuxDOId() error {
 	if user.LinuxDOId == "" {
 		return errors.New("linux do id is empty")
 	}
-	err := DB.Where("linux_do_id = ?", user.LinuxDOId).First(user).Error
+	err := DB.Where(quoteModelIdentifier(DB, "linux_do_id")+" = ?", user.LinuxDOId).First(user).Error
 	return err
 }
 
 func RootUserExists() bool {
 	var user User
-	err := DB.Where("role = ?", common.RoleRootUser).First(&user).Error
+	err := DB.Where(clause.Eq{Column: clause.Column{Name: "role"}, Value: common.RoleRootUser}).First(&user).Error
 	if err != nil {
 		return false
 	}

@@ -131,7 +131,7 @@ func fetchCodexChannelWhamData(
 
 			encoded, encErr := common.Marshal(oauthKey)
 			if encErr == nil {
-				_ = model.DB.Model(&model.Channel{}).Where("id = ?", ch.Id).Update("key", string(encoded)).Error
+				_ = model.DB.Model(&model.Channel{}).Where(model.QuoteSQLIdentifier(model.DB, "id")+" = ?", ch.Id).Update("key", string(encoded)).Error
 				model.InitChannelCache()
 			}
 

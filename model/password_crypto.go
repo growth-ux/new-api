@@ -24,7 +24,7 @@ type LoginEncryptionKey struct {
 // dedicated store. Concurrent replicas converge through the unique slot.
 func InitPasswordEncryption() error {
 	var stored LoginEncryptionKey
-	queryErr := DB.Where("slot = ?", activeLoginEncryptionKeySlot).First(&stored).Error
+	queryErr := DB.Where(quoteModelIdentifier(DB, "slot")+" = ?", activeLoginEncryptionKeySlot).First(&stored).Error
 	if queryErr == nil {
 		if err := common.LoadPasswordEncryptionPrivateKey(stored.PrivateKeyPEM); err != nil {
 			return fmt.Errorf("load persisted password encryption key: %w", err)
@@ -50,7 +50,7 @@ func InitPasswordEncryption() error {
 		return fmt.Errorf("persist password encryption key: %w", err)
 	}
 
-	if err := DB.Where("slot = ?", activeLoginEncryptionKeySlot).First(&stored).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "slot")+" = ?", activeLoginEncryptionKeySlot).First(&stored).Error; err != nil {
 		return fmt.Errorf("reload password encryption key: %w", err)
 	}
 	if err := common.LoadPasswordEncryptionPrivateKey(stored.PrivateKeyPEM); err != nil {

@@ -40,7 +40,7 @@ func validateModelVendor(tx *gorm.DB, id int) error {
 		return errors.New("select a saved vendor")
 	}
 	var count int64
-	if err := tx.Model(&Vendor{}).Where("id = ?", id).Count(&count).Error; err != nil {
+	if err := tx.Model(&Vendor{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
@@ -59,7 +59,7 @@ func validateVendorMetadata(tx *gorm.DB, vendor *Vendor) error {
 		return errors.New("vendor name and icon must not exceed 128 characters")
 	}
 	var others []Vendor
-	if err := tx.Select("id", "name").Where("id <> ?", vendor.Id).Find(&others).Error; err != nil {
+	if err := tx.Select("id", "name").Where(quoteModelIdentifier(DB, "id")+" <> ?", vendor.Id).Find(&others).Error; err != nil {
 		return err
 	}
 	for _, other := range others {
@@ -125,7 +125,7 @@ func buildVendorOperationPreview(db *gorm.DB, operation VendorOperation) (*Vendo
 	}
 	preview := &VendorOperationPreview{Action: operation.Action, Sources: []Vendor{}, Models: []VendorAssignmentModel{}}
 	var vendors []Vendor
-	if err := db.Session(&gorm.Session{}).Order("id").Find(&vendors).Error; err != nil {
+	if err := db.Session(&gorm.Session{}).Order(quoteModelIdentifier(DB, "id")).Find(&vendors).Error; err != nil {
 		return nil, err
 	}
 	byID := make(map[int]*Vendor, len(vendors))
@@ -144,9 +144,9 @@ func buildVendorOperationPreview(db *gorm.DB, operation VendorOperation) (*Vendo
 		}
 	}
 	var models []Model
-	query := db.Session(&gorm.Session{}).Model(&Model{}).Order("id")
+	query := db.Session(&gorm.Session{}).Model(&Model{}).Order(quoteModelIdentifier(DB, "id"))
 	if operation.Action == "assign" {
-		query = query.Where("id IN ?", ids)
+		query = query.Where(quoteModelIdentifier(DB, "id")+" IN ?", ids)
 	} else {
 		for _, id := range ids {
 			vendor := byID[id]
@@ -158,7 +158,7 @@ func buildVendorOperationPreview(db *gorm.DB, operation VendorOperation) (*Vendo
 			}
 			preview.Sources = append(preview.Sources, *vendor)
 		}
-		query = query.Where("vendor_id IN ?", ids)
+		query = query.Where(quoteModelIdentifier(DB, "vendor_id")+" IN ?", ids)
 	}
 	if err := query.Find(&models).Error; err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func applyVendorOperation(operation VendorOperation) (*VendorOperationResult, er
 			}
 		}
 		if len(result.UpdatedModels) > 0 {
-			if err := tx.Model(&Model{}).Where("id IN ?", result.UpdatedModels).Updates(map[string]any{"vendor_id": operation.TargetVendorID, "updated_time": common.GetTimestamp()}).Error; err != nil {
+			if err := tx.Model(&Model{}).Where(quoteModelIdentifier(DB, "id")+" IN ?", result.UpdatedModels).Updates(map[string]any{"vendor_id": operation.TargetVendorID, "updated_time": common.GetTimestamp()}).Error; err != nil {
 				return err
 			}
 		}
@@ -234,7 +234,7 @@ func applyVendorOperation(operation VendorOperation) (*VendorOperationResult, er
 			for _, vendor := range preview.Sources {
 				result.DeletedVendors = append(result.DeletedVendors, vendor.Id)
 			}
-			if err := tx.Where("id IN ?", result.DeletedVendors).Delete(&Vendor{}).Error; err != nil {
+			if err := tx.Where(quoteModelIdentifier(DB, "id")+" IN ?", result.DeletedVendors).Delete(&Vendor{}).Error; err != nil {
 				return err
 			}
 		}

@@ -28,6 +28,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -507,7 +508,7 @@ func updateChannelUpstreamModelSettings(channel *model.Channel, settings dto.Cha
 	if updateModels {
 		updates["models"] = channel.Models
 	}
-	return model.DB.Model(&model.Channel{}).Where("id = ?", channel.Id).Updates(updates).Error
+	return model.DB.Model(&model.Channel{}).Where(model.QuoteSQLIdentifier(model.DB, "id")+" = ?", channel.Id).Updates(updates).Error
 }
 
 func checkAndPersistChannelUpstreamModelUpdates(
@@ -704,7 +705,7 @@ func runChannelUpstreamModelUpdateTaskOnce(ctx context.Context, force bool, allo
 	// Count the enabled channels up front so progress can be reported as a
 	// percentage; a count error is non-fatal (progress just won't show a %).
 	var totalChannels int64
-	if err := model.DB.Model(&model.Channel{}).Where("status = ?", common.ChannelStatusEnabled).Count(&totalChannels).Error; err != nil {
+	if err := model.DB.Model(&model.Channel{}).Where(clause.Eq{Column: clause.Column{Name: "status"}, Value: common.ChannelStatusEnabled}).Count(&totalChannels).Error; err != nil {
 		totalChannels = 0
 	}
 	processed := 0
@@ -718,11 +719,11 @@ scanLoop:
 		var channels []*model.Channel
 		query := model.DB.
 			Select(channelUpstreamModelUpdateSelectFields).
-			Where("status = ?", common.ChannelStatusEnabled).
-			Order("id asc").
+			Where(clause.Eq{Column: clause.Column{Name: "status"}, Value: common.ChannelStatusEnabled}).
+			Clauses(clause.OrderBy{Columns: []clause.OrderByColumn{{Column: clause.Column{Name: "id"}}}}).
 			Limit(channelUpstreamModelUpdateTaskBatchSize)
 		if lastID > 0 {
-			query = query.Where("id > ?", lastID)
+			query = query.Where(clause.Gt{Column: clause.Column{Name: "id"}, Value: lastID})
 		}
 		err := query.Find(&channels).Error
 		if err != nil {
@@ -1013,11 +1014,11 @@ func findEnabledChannelsAfterID(lastID int, batchSize int) ([]*model.Channel, er
 	var channels []*model.Channel
 	query := model.DB.
 		Select(channelUpstreamModelUpdateSelectFields).
-		Where("status = ?", common.ChannelStatusEnabled).
-		Order("id asc").
+		Where(model.QuoteSQLIdentifier(model.DB, "status")+" = ?", common.ChannelStatusEnabled).
+		Order(model.QuoteSQLIdentifier(model.DB, "id") + " asc").
 		Limit(batchSize)
 	if lastID > 0 {
-		query = query.Where("id > ?", lastID)
+		query = query.Where(model.QuoteSQLIdentifier(model.DB, "id")+" > ?", lastID)
 	}
 	return channels, query.Find(&channels).Error
 }

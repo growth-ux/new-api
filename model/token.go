@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/bytedance/gopkg/util/gopool"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Token struct {
@@ -106,7 +107,7 @@ func (token *Token) GetIpLimits() []string {
 func GetAllUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
 	var tokens []*Token
 	var err error
-	err = DB.Where("user_id = ?", userId).Order("id desc").Limit(num).Offset(startIdx).Find(&tokens).Error
+	err = DB.Where(clause.Eq{Column: clause.Column{Name: "user_id"}, Value: userId}).Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&tokens).Error
 	return tokens, err
 }
 
@@ -183,7 +184,7 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 		}
 	}
 
-	baseQuery := DB.Model(&Token{}).Where("user_id = ?", userId)
+	baseQuery := DB.Model(&Token{}).Where(clause.Eq{Column: clause.Column{Name: "user_id"}, Value: userId})
 
 	// 非空才加 LIKE 条件，空则跳过（不过滤该字段）
 	if keyword != "" {
@@ -191,14 +192,14 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 		if err != nil {
 			return nil, 0, err
 		}
-		baseQuery = baseQuery.Where("name LIKE ? ESCAPE '!'", keywordPattern)
+		baseQuery = baseQuery.Where(quoteModelIdentifier(DB, "name")+" LIKE ? ESCAPE '!'", keywordPattern)
 	}
 	if token != "" {
 		tokenPattern, err := sanitizeLikePattern(token)
 		if err != nil {
 			return nil, 0, err
 		}
-		baseQuery = baseQuery.Where(commonKeyCol+" LIKE ? ESCAPE '!'", tokenPattern)
+		baseQuery = baseQuery.Where(quoteModelIdentifier(DB, "key")+" LIKE ? ESCAPE '!'", tokenPattern)
 	}
 
 	// 先查匹配总数（用于分页，受 maxTokens 上限保护，避免全表 COUNT）
@@ -209,7 +210,7 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 	}
 
 	// 再分页查数据
-	err = baseQuery.Order("id desc").Offset(offset).Limit(limit).Find(&tokens).Error
+	err = baseQuery.Order(quoteModelIdentifier(DB, "id") + " desc").Offset(offset).Limit(limit).Find(&tokens).Error
 	if err != nil {
 		common.SysError("failed to search tokens: " + err.Error())
 		return nil, 0, errors.New("搜索令牌失败")
@@ -263,7 +264,7 @@ func GetTokenByIds(id int, userId int) (*Token, error) {
 	}
 	token := Token{Id: id, UserId: userId}
 	var err error = nil
-	err = DB.First(&token, "id = ? and user_id = ?", id, userId).Error
+	err = DB.Where(quoteModelIdentifier(DB, "id")+" = ? and "+quoteModelIdentifier(DB, "user_id")+" = ?", id, userId).First(&token).Error
 	return &token, err
 }
 
@@ -273,7 +274,7 @@ func GetTokenById(id int) (*Token, error) {
 	}
 	token := Token{Id: id}
 	var err error = nil
-	err = DB.First(&token, "id = ?", id).Error
+	err = DB.Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(&token).Error
 	return &token, err
 }
 
@@ -287,7 +288,7 @@ func GetTokenByKey(key string, fromDB bool) (token *Token, err error) {
 		// Don't return error - fall through to DB
 	}
 	token = &Token{}
-	if err = DB.Where(commonKeyCol+" = ?", key).First(token).Error; err != nil {
+	if err = DB.Where(clause.Eq{Column: clause.Column{Name: "key"}, Value: key}).First(token).Error; err != nil {
 		return nil, err
 	}
 	if common.RedisEnabled {
@@ -395,10 +396,10 @@ func IncreaseTokenQuota(tokenId int, key string, quota int) (err error) {
 }
 
 func increaseTokenQuota(id int, quota int) (err error) {
-	err = DB.Model(&Token{}).Where("id = ?", id).Updates(
+	err = DB.Model(&Token{}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).Updates(
 		map[string]any{
-			"remain_quota":  gorm.Expr("remain_quota + ?", quota),
-			"used_quota":    gorm.Expr("used_quota - ?", quota),
+			"remain_quota":  gorm.Expr(quoteModelIdentifier(DB, "remain_quota")+" + ?", quota),
+			"used_quota":    gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" - ?", quota),
 			"accessed_time": common.GetTimestamp(),
 		},
 	).Error
@@ -424,10 +425,10 @@ func DecreaseTokenQuota(id int, key string, quota int) (err error) {
 }
 
 func decreaseTokenQuota(id int, quota int) (err error) {
-	err = DB.Model(&Token{}).Where("id = ?", id).Updates(
+	err = DB.Model(&Token{}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).Updates(
 		map[string]any{
-			"remain_quota":  gorm.Expr("remain_quota - ?", quota),
-			"used_quota":    gorm.Expr("used_quota + ?", quota),
+			"remain_quota":  gorm.Expr(quoteModelIdentifier(DB, "remain_quota")+" - ?", quota),
+			"used_quota":    gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" + ?", quota),
 			"accessed_time": common.GetTimestamp(),
 		},
 	).Error
@@ -437,7 +438,7 @@ func decreaseTokenQuota(id int, quota int) (err error) {
 // CountUserTokens returns total number of tokens for the given user, used for pagination
 func CountUserTokens(userId int) (int64, error) {
 	var total int64
-	err := DB.Model(&Token{}).Where("user_id = ?", userId).Count(&total).Error
+	err := DB.Model(&Token{}).Where(clause.Eq{Column: clause.Column{Name: "user_id"}, Value: userId}).Count(&total).Error
 	return total, err
 }
 
@@ -450,7 +451,8 @@ func BatchDeleteTokens(ids []int, userId int) (int, error) {
 	tx := DB.Begin()
 
 	var tokens []Token
-	if err := tx.Where("user_id = ? AND id IN (?)", userId, ids).Find(&tokens).Error; err != nil {
+	condition := quoteModelIdentifier(tx, "user_id") + " = ? AND " + quoteModelIdentifier(tx, "id") + " IN ?"
+	if err := tx.Where(condition, userId, ids).Find(&tokens).Error; err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -458,7 +460,7 @@ func BatchDeleteTokens(ids []int, userId int) (int, error) {
 		common.SysLog("failed to invalidate token cache before batch delete: " + err.Error())
 	}
 
-	if err := tx.Where("user_id = ? AND id IN (?)", userId, ids).Delete(&Token{}).Error; err != nil {
+	if err := tx.Where(condition, userId, ids).Delete(&Token{}).Error; err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -473,7 +475,7 @@ func BatchDeleteTokens(ids []int, userId int) (int, error) {
 func GetTokenKeysByIds(ids []int, userId int) ([]Token, error) {
 	var tokens []Token
 	err := DB.Select("id", commonKeyCol).
-		Where("user_id = ? AND id IN (?)", userId, ids).
+		Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "id")+" IN ?", userId, ids).
 		Find(&tokens).Error
 	return tokens, err
 }
@@ -491,7 +493,7 @@ func InvalidateUserTokensCache(userId int) error {
 	var tokens []Token
 	if err := DB.Unscoped().
 		Select("id", commonKeyCol).
-		Where("user_id = ?", userId).
+		Where(clause.Eq{Column: clause.Column{Name: "user_id"}, Value: userId}).
 		Find(&tokens).Error; err != nil {
 		return err
 	}

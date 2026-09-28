@@ -6,6 +6,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // UserVerificationState is an authoritative, credential-free projection for
@@ -30,6 +31,7 @@ func getUserVerificationState(tx *gorm.DB, userID int, forUpdate bool) (*UserVer
 		return nil, ErrUserSessionInvalid
 	}
 	var state UserVerificationState
+	column := func(name string) string { return quoteModelIdentifier(tx, name) }
 	// DM8 cannot alias a bare EXISTS predicate ("EXISTS (?) AS x" fails near AS);
 	// wrap it in CASE so the projected column is a plain integer, matching how the
 	// other dialects already project has_password.
@@ -37,16 +39,17 @@ func getUserVerificationState(tx *gorm.DB, userID int, forUpdate bool) (*UserVer
 	if common.UsingMainDatabase(common.DatabaseTypeDM) {
 		existsProjection = "CASE WHEN EXISTS (?) THEN 1 ELSE 0 END AS %s"
 	}
-	selectSQL := "id AS user_id, status, role, auth_version, CASE WHEN password <> '' THEN 1 ELSE 0 END AS has_password, " +
-		fmt.Sprintf(existsProjection, "has_two_fa") + ", " +
-		fmt.Sprintf(existsProjection, "two_fa_locked") + ", " +
-		fmt.Sprintf(existsProjection, "has_passkey")
+	selectSQL := fmt.Sprintf("%s AS %s, %s, %s, %s, CASE WHEN %s <> '' THEN 1 ELSE 0 END AS %s, ",
+		column("id"), column("user_id"), column("status"), column("role"), column("auth_version"), column("password"), column("has_password")) +
+		fmt.Sprintf(existsProjection, column("has_two_fa")) + ", " +
+		fmt.Sprintf(existsProjection, column("two_fa_locked")) + ", " +
+		fmt.Sprintf(existsProjection, column("has_passkey"))
 	query := tx.Model(&User{}).Select(
 		selectSQL,
-		tx.Model(&TwoFA{}).Select("1").Where("user_id = ? AND is_enabled = ?", userID, true),
-		tx.Model(&TwoFA{}).Select("1").Where("user_id = ? AND is_enabled = ? AND locked_until > ?", userID, true, time.Now()),
-		tx.Model(&PasskeyCredential{}).Select("1").Where("user_id = ?", userID),
-	).Where("id = ?", userID)
+		tx.Model(&TwoFA{}).Select("1").Where(column("user_id")+" = ? AND "+column("is_enabled")+" = ?", userID, true),
+		tx.Model(&TwoFA{}).Select("1").Where(column("user_id")+" = ? AND "+column("is_enabled")+" = ? AND "+column("locked_until")+" > ?", userID, true, time.Now()),
+		tx.Model(&PasskeyCredential{}).Select("1").Where(clause.Eq{Column: clause.Column{Name: "user_id"}, Value: userID}),
+	).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: userID})
 	if forUpdate {
 		query = lockForUpdate(query)
 	}
@@ -80,13 +83,13 @@ func CreateUserSessionFromLoginFlow(token string, session *UserSession, validate
 		}
 		now := time.Now().Unix()
 		var activeCount, issuanceCount int64
-		if err := tx.Model(&UserSession{}).Where("user_id = ? AND status = ? AND expires_at > ?", session.UserID, UserSessionStatusActive, now).Count(&activeCount).Error; err != nil {
+		if err := tx.Model(&UserSession{}).Where(quoteModelIdentifier(tx, "user_id")+" = ? AND "+quoteModelIdentifier(tx, "status")+" = ? AND "+quoteModelIdentifier(tx, "expires_at")+" > ?", session.UserID, UserSessionStatusActive, now).Count(&activeCount).Error; err != nil {
 			return err
 		}
 		if activeCount >= int64(common.UserSessionActiveLimit) {
 			return ErrUserSessionLimit
 		}
-		if err := tx.Model(&UserSession{}).Where("user_id = ? AND created_at > ?", session.UserID, now-common.UserSessionIssuanceWindowSeconds).Count(&issuanceCount).Error; err != nil {
+		if err := tx.Model(&UserSession{}).Where(quoteModelIdentifier(tx, "user_id")+" = ? AND "+quoteModelIdentifier(tx, "created_at")+" > ?", session.UserID, now-common.UserSessionIssuanceWindowSeconds).Count(&issuanceCount).Error; err != nil {
 			return err
 		}
 		if issuanceCount >= int64(common.UserSessionIssuanceLimit) {

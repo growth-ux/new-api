@@ -50,7 +50,7 @@ func ChangeUserPassword(identity AuthSessionIdentity, update *User, firstPasswor
 		if _, err := IncrementUserAuthVersionWithTx(tx, identity.UserID); err != nil {
 			return err
 		}
-		if err := tx.Model(&User{}).Where("id = ?", identity.UserID).Updates(changes).Error; err != nil {
+		if err := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", identity.UserID).Updates(changes).Error; err != nil {
 			return err
 		}
 		return tx.First(update, identity.UserID).Error
@@ -77,7 +77,7 @@ func UnbindUserOAuthForSession(identity AuthSessionIdentity, providerID int, ena
 			return err
 		}
 		var binding UserOAuthBinding
-		if err := tx.Where("user_id = ? AND provider_id = ?", identity.UserID, providerID).First(&binding).Error; err != nil {
+		if err := tx.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_id")+" = ?", identity.UserID, providerID).First(&binding).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrAccountBindingChanged
 			}
@@ -93,14 +93,14 @@ func UnbindUserOAuthForSession(identity AuthSessionIdentity, providerID int, ena
 		}
 		if !hasLogin && enabled.Passkey {
 			var count int64
-			if err := tx.Model(&PasskeyCredential{}).Where("user_id = ?", identity.UserID).Count(&count).Error; err != nil {
+			if err := tx.Model(&PasskeyCredential{}).Where(quoteModelIdentifier(DB, "user_id")+" = ?", identity.UserID).Count(&count).Error; err != nil {
 				return err
 			}
 			hasLogin = count > 0
 		}
 		if !hasLogin && len(enabled.CustomProviderIDs) > 0 {
 			var count int64
-			if err := tx.Model(&UserOAuthBinding{}).Where("user_id = ? AND provider_id <> ? AND provider_id IN ?", identity.UserID, providerID, enabled.CustomProviderIDs).Count(&count).Error; err != nil {
+			if err := tx.Model(&UserOAuthBinding{}).Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_id")+" <> ? AND "+quoteModelIdentifier(DB, "provider_id")+" IN ?", identity.UserID, providerID, enabled.CustomProviderIDs).Count(&count).Error; err != nil {
 				return err
 			}
 			hasLogin = count > 0
@@ -122,13 +122,13 @@ func UpdateUserBindColumnForSessionWithTx(tx *gorm.DB, identity AuthSessionIdent
 	// Preserve the existing ownership check within the transaction and update
 	// only the chosen binding column, never a complete user snapshot.
 	var count int64
-	if err := tx.Model(&User{}).Where(column+" = ? AND id <> ?", value, identity.UserID).Count(&count).Error; err != nil {
+	if err := tx.Model(&User{}).Where(quoteModelIdentifier(tx, column)+" = ? AND "+quoteModelIdentifier(tx, "id")+" <> ?", value, identity.UserID).Count(&count).Error; err != nil {
 		return err
 	}
 	if count != 0 {
 		return ErrExternalIdentityAlreadyClaimed
 	}
-	return tx.Model(&User{}).Where("id = ?", identity.UserID).Update(column, value).Error
+	return tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ?", identity.UserID).Update(column, value).Error
 }
 
 func UpdateUserOAuthBindingForSessionWithTx(tx *gorm.DB, identity AuthSessionIdentity, providerID int, subject string) error {
@@ -139,7 +139,7 @@ func UpdateUserOAuthBindingForSessionWithTx(tx *gorm.DB, identity AuthSessionIde
 		return err
 	}
 	var binding UserOAuthBinding
-	err := tx.Where("user_id = ? AND provider_id = ?", identity.UserID, providerID).First(&binding).Error
+	err := tx.Where(quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "provider_id")+" = ?", identity.UserID, providerID).First(&binding).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return CreateUserOAuthBindingWithTx(tx, &UserOAuthBinding{UserId: identity.UserID, ProviderId: providerID, ProviderUserId: subject})
 	}
@@ -159,13 +159,13 @@ func MigrateLegacyGitHubBindingWithTx(tx *gorm.DB, userID int, legacyID, gitHubI
 		return false, ErrAccountBindingChanged
 	}
 	var count int64
-	if err := tx.Model(&User{}).Where("github_id = ? AND id <> ?", gitHubID, userID).Count(&count).Error; err != nil {
+	if err := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "github_id")+" = ? AND "+quoteModelIdentifier(DB, "id")+" <> ?", gitHubID, userID).Count(&count).Error; err != nil {
 		return false, err
 	}
 	if count != 0 {
 		return false, ErrExternalIdentityAlreadyClaimed
 	}
-	result := tx.Model(&User{}).Where("id = ? AND github_id = ?", userID, legacyID).Update("github_id", gitHubID)
+	result := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "github_id")+" = ?", userID, legacyID).Update("github_id", gitHubID)
 	if result.Error != nil {
 		return false, result.Error
 	}

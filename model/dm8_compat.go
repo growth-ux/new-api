@@ -40,6 +40,10 @@ func (dm8TransactionLock) TableName() string { return "dm8_transaction_locks" }
 // email index is not available, so email uniqueness is serialized on this row.
 const dm8EmailLockName = "normalized_email"
 
+// GORM creates the lock column as the quoted lowercase "name". On a
+// CASE_SENSITIVE=1 instance, an unquoted name resolves to NAME instead.
+const dm8EmailLockPredicate = `"name" = ?`
+
 // ensureDM8TransactionLocks creates the lock table and seeds the email anchor. It
 // is idempotent: a concurrent seed that hits the primary-key uniqueness is
 // treated as success, and the anchor is verified to exist before returning.
@@ -48,7 +52,7 @@ func ensureDM8TransactionLocks(db *gorm.DB) error {
 		return fmt.Errorf("dm8 ensure lock table: %w", err)
 	}
 	var existing int64
-	if err := db.Model(&dm8TransactionLock{}).Where("name = ?", dm8EmailLockName).Count(&existing).Error; err != nil {
+	if err := db.Model(&dm8TransactionLock{}).Where(dm8EmailLockPredicate, dm8EmailLockName).Count(&existing).Error; err != nil {
 		return fmt.Errorf("dm8 inspect email lock anchor: %w", err)
 	}
 	if existing == 0 {
@@ -59,7 +63,7 @@ func ensureDM8TransactionLocks(db *gorm.DB) error {
 		}
 	}
 	var count int64
-	if err := db.Model(&dm8TransactionLock{}).Where("name = ?", dm8EmailLockName).Count(&count).Error; err != nil {
+	if err := db.Model(&dm8TransactionLock{}).Where(dm8EmailLockPredicate, dm8EmailLockName).Count(&count).Error; err != nil {
 		return fmt.Errorf("dm8 verify email lock anchor: %w", err)
 	}
 	if count != 1 {
@@ -74,6 +78,6 @@ func ensureDM8TransactionLocks(db *gorm.DB) error {
 func lockDM8NormalizedEmail(tx *gorm.DB) error {
 	var anchor dm8TransactionLock
 	return lockForUpdate(tx).
-		Where("name = ?", dm8EmailLockName).
+		Where(dm8EmailLockPredicate, dm8EmailLockName).
 		First(&anchor).Error
 }

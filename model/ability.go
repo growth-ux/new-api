@@ -32,10 +32,12 @@ type AbilityWithChannel struct {
 
 func GetAllEnableAbilityWithChannels() ([]AbilityWithChannel, error) {
 	var abilities []AbilityWithChannel
+	abilitiesTable := quoteModelIdentifier(DB, "abilities")
+	channelsTable := quoteModelIdentifier(DB, "channels")
 	err := DB.Table("abilities").
-		Select("abilities.*, channels.type as channel_type").
-		Joins("left join channels on abilities.channel_id = channels.id").
-		Where("abilities.enabled = ?", true).
+		Select(fmt.Sprintf("%s.*, %s as %s", abilitiesTable, quoteModelIdentifier(DB, "channels.type"), quoteModelIdentifier(DB, "channel_type"))).
+		Joins(fmt.Sprintf("left join %s on %s = %s", channelsTable, quoteModelIdentifier(DB, "abilities.channel_id"), quoteModelIdentifier(DB, "channels.id"))).
+		Where(quoteModelIdentifier(DB, "abilities.enabled")+" = ?", true).
 		Scan(&abilities).Error
 	return abilities, err
 }
@@ -43,20 +45,22 @@ func GetAllEnableAbilityWithChannels() ([]AbilityWithChannel, error) {
 func GetGroupEnabledModels(group string) []string {
 	var models []string
 	// Find distinct models
-	DB.Table("abilities").Where(commonGroupCol+" = ? and enabled = ?", group, true).Distinct("model").Pluck("model", &models)
+	modelCol := quoteModelIdentifier(DB, "model")
+	DB.Table("abilities").Where(quoteModelIdentifier(DB, commonGroupCol)+" = ? and "+quoteModelIdentifier(DB, "enabled")+" = ?", group, true).Distinct(modelCol).Pluck(modelCol, &models)
 	return models
 }
 
 func GetEnabledModels() []string {
 	var models []string
 	// Find distinct models
-	DB.Table("abilities").Where("enabled = ?", true).Distinct("model").Pluck("model", &models)
+	modelCol := quoteModelIdentifier(DB, "model")
+	DB.Table("abilities").Where(clause.Eq{Column: clause.Column{Name: "enabled"}, Value: true}).Distinct(modelCol).Pluck(modelCol, &models)
 	return models
 }
 
 func GetAllEnableAbilities() []Ability {
 	var abilities []Ability
-	DB.Find(&abilities, "enabled = ?", true)
+	DB.Where(clause.Eq{Column: clause.Column{Name: "enabled"}, Value: true}).Find(&abilities)
 	return abilities
 }
 
@@ -64,10 +68,10 @@ func getPriority(group string, model string, retry int) (int, error) {
 
 	var priorities []int
 	err := DB.Model(&Ability{}).
-		Select("DISTINCT(priority)").
-		Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true).
-		Order("priority DESC").              // 按优先级降序排序
-		Pluck("priority", &priorities).Error // Pluck用于将查询的结果直接扫描到一个切片中
+		Select("DISTINCT("+quoteModelIdentifier(DB, "priority")+")").
+		Where(quoteModelIdentifier(DB, commonGroupCol)+" = ? and "+quoteModelIdentifier(DB, "model")+" = ? and "+quoteModelIdentifier(DB, "enabled")+" = ?", group, model, true).
+		Order(quoteModelIdentifier(DB, "priority")+" DESC"). // 按优先级降序排序
+		Pluck("priority", &priorities).Error                 // Pluck用于将查询的结果直接扫描到一个切片中
 
 	if err != nil {
 		// 处理错误
@@ -91,14 +95,16 @@ func getPriority(group string, model string, retry int) (int, error) {
 }
 
 func getChannelQuery(group string, model string, retry int) (*gorm.DB, error) {
-	maxPrioritySubQuery := DB.Model(&Ability{}).Select("MAX(priority)").Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true)
-	channelQuery := DB.Where(commonGroupCol+" = ? and model = ? and enabled = ? and priority = (?)", group, model, true, maxPrioritySubQuery)
+	groupCol, modelCol := quoteModelIdentifier(DB, commonGroupCol), quoteModelIdentifier(DB, "model")
+	enabledCol, priorityCol := quoteModelIdentifier(DB, "enabled"), quoteModelIdentifier(DB, "priority")
+	maxPrioritySubQuery := DB.Model(&Ability{}).Select("MAX("+priorityCol+")").Where(groupCol+" = ? and "+modelCol+" = ? and "+enabledCol+" = ?", group, model, true)
+	channelQuery := DB.Where(groupCol+" = ? and "+modelCol+" = ? and "+enabledCol+" = ? and "+priorityCol+" = (?)", group, model, true, maxPrioritySubQuery)
 	if retry != 0 {
 		priority, err := getPriority(group, model, retry)
 		if err != nil {
 			return nil, err
 		} else {
-			channelQuery = DB.Where(commonGroupCol+" = ? and model = ? and enabled = ? and priority = ?", group, model, true, priority)
+			channelQuery = DB.Where(groupCol+" = ? and "+modelCol+" = ? and "+enabledCol+" = ? and "+priorityCol+" = ?", group, model, true, priority)
 		}
 	}
 
@@ -112,7 +118,8 @@ func GetChannel(
 	filters []dto.ChannelFilter,
 ) (*Channel, error) {
 	var abilities []Ability
-	err := DB.Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true).Order("priority DESC, weight DESC").Find(&abilities).Error
+	err := DB.Where(quoteModelIdentifier(DB, commonGroupCol)+" = ? and "+quoteModelIdentifier(DB, "model")+" = ? and "+quoteModelIdentifier(DB, "enabled")+" = ?", group, model, true).
+		Order(quoteModelIdentifier(DB, "priority") + " DESC, " + quoteModelIdentifier(DB, "weight") + " DESC").Find(&abilities).Error
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +166,7 @@ func GetChannel(
 	} else {
 		return nil, nil
 	}
-	err = DB.First(&channel, "id = ?", channel.Id).Error
+	err = DB.Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: channel.Id}).First(&channel).Error
 	return &channel, err
 }
 
@@ -182,7 +189,7 @@ func filterAbilitiesByConstraints(abilities []Ability, modelName string, filters
 	}
 
 	var channels []*Channel
-	if err := DB.Where("id IN ?", channelIds).Find(&channels).Error; err != nil {
+	if err := DB.Where(clause.IN{Column: clause.Column{Name: "id"}, Values: lo.Map(channelIds, func(id int, _ int) interface{} { return id })}).Find(&channels).Error; err != nil {
 		if identityFilterRequiresKey(filters) {
 			return nil
 		}
@@ -255,7 +262,7 @@ func (channel *Channel) AddAbilities(tx *gorm.DB) error {
 }
 
 func (channel *Channel) DeleteAbilities() error {
-	return DB.Where("channel_id = ?", channel.Id).Delete(&Ability{}).Error
+	return DB.Where(clause.Eq{Column: clause.Column{Name: "channel_id"}, Value: channel.Id}).Delete(&Ability{}).Error
 }
 
 // UpdateAbilities updates abilities of this channel.
@@ -277,7 +284,7 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 	}
 
 	// First delete all abilities of this channel
-	err := tx.Where("channel_id = ?", channel.Id).Delete(&Ability{}).Error
+	err := tx.Where(clause.Eq{Column: clause.Column{Name: "channel_id"}, Value: channel.Id}).Delete(&Ability{}).Error
 	if err != nil {
 		if isNewTx {
 			tx.Rollback()
@@ -331,11 +338,11 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 }
 
 func UpdateAbilityStatus(channelId int, status bool) error {
-	return DB.Model(&Ability{}).Where("channel_id = ?", channelId).Select("enabled").Update("enabled", status).Error
+	return DB.Model(&Ability{}).Where(clause.Eq{Column: clause.Column{Name: "channel_id"}, Value: channelId}).Select("enabled").Update("enabled", status).Error
 }
 
 func UpdateAbilityStatusByTag(tag string, status bool) error {
-	return DB.Model(&Ability{}).Where("tag = ?", tag).Select("enabled").Update("enabled", status).Error
+	return DB.Model(&Ability{}).Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}).Select("enabled").Update("enabled", status).Error
 }
 
 func UpdateAbilityByTag(tag string, newTag *string, priority *int64, weight *uint) error {
@@ -349,7 +356,7 @@ func UpdateAbilityByTag(tag string, newTag *string, priority *int64, weight *uin
 	if weight != nil {
 		ability.Weight = *weight
 	}
-	return DB.Model(&Ability{}).Where("tag = ?", tag).Updates(ability).Error
+	return DB.Model(&Ability{}).Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}).Updates(ability).Error
 }
 
 var fixLock = sync.Mutex{}
@@ -363,13 +370,13 @@ func FixAbility() (int, int, error) {
 
 	// truncate abilities table
 	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
-		err := DB.Exec("DELETE FROM abilities").Error
+		err := DB.Exec("DELETE FROM " + quoteModelIdentifier(DB, "abilities")).Error
 		if err != nil {
 			common.SysLog(fmt.Sprintf("Delete abilities failed: %s", err.Error()))
 			return 0, 0, err
 		}
 	} else {
-		err := DB.Exec("TRUNCATE TABLE abilities").Error
+		err := DB.Exec("TRUNCATE TABLE " + quoteModelIdentifier(DB, "abilities")).Error
 		if err != nil {
 			common.SysLog(fmt.Sprintf("Truncate abilities failed: %s", err.Error()))
 			return 0, 0, err
@@ -389,7 +396,7 @@ func FixAbility() (int, int, error) {
 	for _, chunk := range lo.Chunk(channels, 50) {
 		ids := lo.Map(chunk, func(c *Channel, _ int) int { return c.Id })
 		// Delete all abilities of this channel
-		err = DB.Where("channel_id IN ?", ids).Delete(&Ability{}).Error
+		err = DB.Where(quoteModelIdentifier(DB, "channel_id")+" IN ?", ids).Delete(&Ability{}).Error
 		if err != nil {
 			common.SysLog(fmt.Sprintf("Delete abilities failed: %s", err.Error()))
 			failCount += len(chunk)

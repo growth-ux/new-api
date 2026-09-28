@@ -100,7 +100,7 @@ func IsPrefillGroupNameDuplicated(id int, name string) (bool, error) {
 		return false, nil
 	}
 	var cnt int64
-	err := DB.Model(&PrefillGroup{}).Where("name = ? AND id <> ?", name, id).Count(&cnt).Error
+	err := DB.Model(&PrefillGroup{}).Where(quoteModelIdentifier(DB, "name")+" = ? AND "+quoteModelIdentifier(DB, "id")+" <> ?", name, id).Count(&cnt).Error
 	return cnt > 0, err
 }
 
@@ -120,9 +120,9 @@ func GetAllPrefillGroups(groupType string) ([]*PrefillGroup, error) {
 	var groups []*PrefillGroup
 	query := DB.Model(&PrefillGroup{})
 	if groupType != "" {
-		query = query.Where("type = ?", groupType)
+		query = query.Where(quoteModelIdentifier(DB, "type")+" = ?", groupType)
 	}
-	if err := query.Order("updated_time DESC").Find(&groups).Error; err != nil {
+	if err := query.Order(quoteModelIdentifier(DB, "updated_time") + " DESC").Find(&groups).Error; err != nil {
 		return nil, err
 	}
 	return groups, nil

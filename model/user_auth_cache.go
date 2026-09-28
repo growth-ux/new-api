@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // User auth cache fencing uses three Redis keys per user: the cached user
@@ -180,7 +181,7 @@ func IncrementUserAuthVersionWithTx(tx *gorm.DB, userId int) (int64, error) {
 	}
 	for range 3 {
 		var user User
-		if err := lockForUpdate(tx.Unscoped()).Select("id", "auth_version").Where("id = ?", userId).First(&user).Error; err != nil {
+		if err := lockForUpdate(tx.Unscoped()).Select("id", "auth_version").Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: userId}).First(&user).Error; err != nil {
 			return 0, err
 		}
 		current := max(user.AuthVersion, 1)
@@ -189,7 +190,7 @@ func IncrementUserAuthVersionWithTx(tx *gorm.DB, userId int) (int64, error) {
 			return 0, err
 		}
 		result := tx.Unscoped().Model(&User{}).
-			Where("id = ? AND auth_version = ?", userId, user.AuthVersion).
+			Where(quoteModelIdentifier(tx, "id")+" = ? AND "+quoteModelIdentifier(tx, "auth_version")+" = ?", userId, user.AuthVersion).
 			Update("auth_version", next)
 		if result.Error != nil {
 			return 0, result.Error
@@ -231,7 +232,11 @@ func PublishUserAuthCache(userId int) error {
 // InitializeUserAuthVersions must run after AutoMigrate when upgrading an
 // existing database. It is idempotent and portable across all supported DBs.
 func InitializeUserAuthVersions() error {
-	return DB.Model(&User{}).Where("auth_version IS NULL OR auth_version < ?", 1).Update("auth_version", 1).Error
+	column := clause.Column{Name: "auth_version"}
+	return DB.Model(&User{}).Where(clause.Or(
+		clause.Eq{Column: column, Value: nil},
+		clause.Lt{Column: column, Value: 1},
+	)).Update("auth_version", 1).Error
 }
 
 func updateUserCacheFieldAtVersion(userId int, field string, value any, authVersion int64) error {

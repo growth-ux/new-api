@@ -16,9 +16,14 @@ import (
 	"gorm.io/gorm"
 )
 
+func logColumn(name string) string { return quoteModelIdentifier(LOG_DB, name) }
+
 func applyExplicitLogTextFilter(tx *gorm.DB, column string, value string) (*gorm.DB, error) {
 	if value == "" {
 		return tx, nil
+	}
+	if common.UsingLogDatabase(common.DatabaseTypeDM) {
+		column = quoteModelIdentifier(tx, column)
 	}
 	if strings.Contains(value, "%") {
 		condition, pattern, err := buildLogLikeCondition(column, value)
@@ -142,7 +147,7 @@ func GetLogByTokenId(tokenId int) (logs []*Log, err error) {
 	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		order = clickHouseLogOrder("")
 	}
-	err = LOG_DB.Model(&Log{}).Where("token_id = ?", tokenId).Order(order).Limit(common.MaxRecentItems).Find(&logs).Error
+	err = LOG_DB.Model(&Log{}).Where(logColumn("token_id")+" = ?", tokenId).Order(order).Limit(common.MaxRecentItems).Find(&logs).Error
 	formatUserLogs(logs, 0)
 	return logs, err
 }
@@ -466,7 +471,7 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 	if logType == LogTypeUnknown {
 		tx = LOG_DB
 	} else {
-		tx = LOG_DB.Where("logs.type = ?", logType)
+		tx = LOG_DB.Where(logColumn("logs.type")+" = ?", logType)
 	}
 
 	if tx, err = applyExplicitLogTextFilter(tx, "logs.model_name", modelName); err != nil {
@@ -476,31 +481,31 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 		return nil, 0, err
 	}
 	if tokenName != "" {
-		tx = tx.Where("logs.token_name = ?", tokenName)
+		tx = tx.Where(logColumn("logs.token_name")+" = ?", tokenName)
 	}
 	if requestId != "" {
-		tx = tx.Where("logs.request_id = ?", requestId)
+		tx = tx.Where(logColumn("logs.request_id")+" = ?", requestId)
 	}
 	if upstreamRequestId != "" {
-		tx = tx.Where("logs.upstream_request_id = ?", upstreamRequestId)
+		tx = tx.Where(logColumn("logs.upstream_request_id")+" = ?", upstreamRequestId)
 	}
 	if startTimestamp != 0 {
-		tx = tx.Where("logs.created_at >= ?", startTimestamp)
+		tx = tx.Where(logColumn("logs.created_at")+" >= ?", startTimestamp)
 	}
 	if endTimestamp != 0 {
-		tx = tx.Where("logs.created_at <= ?", endTimestamp)
+		tx = tx.Where(logColumn("logs.created_at")+" <= ?", endTimestamp)
 	}
 	if channel != 0 {
-		tx = tx.Where("logs.channel_id = ?", channel)
+		tx = tx.Where(logColumn("logs.channel_id")+" = ?", channel)
 	}
 	if group != "" {
-		tx = tx.Where("logs."+logGroupCol+" = ?", group)
+		tx = tx.Where(logColumn("logs")+"."+logGroupCol+" = ?", group)
 	}
 	err = tx.Model(&Log{}).Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	order := "logs.created_at desc, logs.id desc"
+	order := logColumn("logs.created_at") + " desc, " + logColumn("logs.id") + " desc"
 	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		order = clickHouseLogOrder("logs.")
 	}
@@ -539,7 +544,7 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 			}
 		} else {
 			// Bulk query channels from DB
-			if err = DB.Table("channels").Select("id, name").Where("id IN ?", channelIds.Items()).Find(&channels).Error; err != nil {
+			if err = DB.Table("channels").Select(quoteModelIdentifier(DB, "id")+", "+quoteModelIdentifier(DB, "name")).Where(quoteModelIdentifier(DB, "id")+" IN ?", channelIds.Items()).Find(&channels).Error; err != nil {
 				return logs, total, err
 			}
 		}
@@ -560,38 +565,38 @@ const logSearchCountLimit = 10000
 func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string, startIdx int, num int, group string, requestId string, upstreamRequestId string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
-		tx = LOG_DB.Where("logs.user_id = ?", userId)
+		tx = LOG_DB.Where(logColumn("logs.user_id")+" = ?", userId)
 	} else {
-		tx = LOG_DB.Where("logs.user_id = ? and logs.type = ?", userId, logType)
+		tx = LOG_DB.Where(logColumn("logs.user_id")+" = ? and "+logColumn("logs.type")+" = ?", userId, logType)
 	}
 
 	if tx, err = applyExplicitLogTextFilter(tx, "logs.model_name", modelName); err != nil {
 		return nil, 0, err
 	}
 	if tokenName != "" {
-		tx = tx.Where("logs.token_name = ?", tokenName)
+		tx = tx.Where(logColumn("logs.token_name")+" = ?", tokenName)
 	}
 	if requestId != "" {
-		tx = tx.Where("logs.request_id = ?", requestId)
+		tx = tx.Where(logColumn("logs.request_id")+" = ?", requestId)
 	}
 	if upstreamRequestId != "" {
-		tx = tx.Where("logs.upstream_request_id = ?", upstreamRequestId)
+		tx = tx.Where(logColumn("logs.upstream_request_id")+" = ?", upstreamRequestId)
 	}
 	if startTimestamp != 0 {
-		tx = tx.Where("logs.created_at >= ?", startTimestamp)
+		tx = tx.Where(logColumn("logs.created_at")+" >= ?", startTimestamp)
 	}
 	if endTimestamp != 0 {
-		tx = tx.Where("logs.created_at <= ?", endTimestamp)
+		tx = tx.Where(logColumn("logs.created_at")+" <= ?", endTimestamp)
 	}
 	if group != "" {
-		tx = tx.Where("logs."+logGroupCol+" = ?", group)
+		tx = tx.Where(logColumn("logs")+"."+logGroupCol+" = ?", group)
 	}
 	err = tx.Model(&Log{}).Limit(logSearchCountLimit).Count(&total).Error
 	if err != nil {
 		common.SysError("failed to count user logs: " + err.Error())
 		return nil, 0, errors.New("查询日志失败")
 	}
-	order := "logs.id desc"
+	order := logColumn("logs.id") + " desc"
 	if common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		order = clickHouseLogOrder("logs.")
 	}
@@ -612,10 +617,12 @@ type Stat struct {
 }
 
 func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
-	tx := LOG_DB.Table("logs").Select(`COALESCE(sum(quota), 0) "quota"`)
+	column := func(name string) string { return quoteModelIdentifier(LOG_DB, name) }
+	tx := LOG_DB.Table("logs").Select(fmt.Sprintf("COALESCE(sum(%s), 0) %s", column("quota"), column("quota")))
 
 	// 为rpm和tpm创建单独的查询
-	rpmTpmQuery := LOG_DB.Table("logs").Select(`count(*) "rpm", COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0) "tpm"`)
+	rpmTpmQuery := LOG_DB.Table("logs").Select(fmt.Sprintf("count(*) %s, COALESCE(sum(%s), 0) + COALESCE(sum(%s), 0) %s",
+		column("rpm"), column("prompt_tokens"), column("completion_tokens"), column("tpm")))
 
 	if tx, err = applyExplicitLogTextFilter(tx, "username", username); err != nil {
 		return stat, err
@@ -624,14 +631,14 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 		return stat, err
 	}
 	if tokenName != "" {
-		tx = tx.Where("token_name = ?", tokenName)
-		rpmTpmQuery = rpmTpmQuery.Where("token_name = ?", tokenName)
+		tx = tx.Where(column("token_name")+" = ?", tokenName)
+		rpmTpmQuery = rpmTpmQuery.Where(column("token_name")+" = ?", tokenName)
 	}
 	if startTimestamp != 0 {
-		tx = tx.Where("created_at >= ?", startTimestamp)
+		tx = tx.Where(column("created_at")+" >= ?", startTimestamp)
 	}
 	if endTimestamp != 0 {
-		tx = tx.Where("created_at <= ?", endTimestamp)
+		tx = tx.Where(column("created_at")+" <= ?", endTimestamp)
 	}
 	if tx, err = applyExplicitLogTextFilter(tx, "model_name", modelName); err != nil {
 		return stat, err
@@ -640,19 +647,19 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 		return stat, err
 	}
 	if channel != 0 {
-		tx = tx.Where("channel_id = ?", channel)
-		rpmTpmQuery = rpmTpmQuery.Where("channel_id = ?", channel)
+		tx = tx.Where(column("channel_id")+" = ?", channel)
+		rpmTpmQuery = rpmTpmQuery.Where(column("channel_id")+" = ?", channel)
 	}
 	if group != "" {
 		tx = tx.Where(logGroupCol+" = ?", group)
 		rpmTpmQuery = rpmTpmQuery.Where(logGroupCol+" = ?", group)
 	}
 
-	tx = tx.Where("type = ?", LogTypeConsume)
-	rpmTpmQuery = rpmTpmQuery.Where("type = ?", LogTypeConsume)
+	tx = tx.Where(column("type")+" = ?", LogTypeConsume)
+	rpmTpmQuery = rpmTpmQuery.Where(column("type")+" = ?", LogTypeConsume)
 
 	// 只统计最近60秒的rpm和tpm
-	rpmTpmQuery = rpmTpmQuery.Where("created_at >= ?", time.Now().Add(-60*time.Second).Unix())
+	rpmTpmQuery = rpmTpmQuery.Where(column("created_at")+" >= ?", time.Now().Add(-60*time.Second).Unix())
 
 	// 执行查询
 	if err := tx.Scan(&stat).Error; err != nil {
@@ -674,29 +681,29 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 }
 
 func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string) (token int) {
-	tx := LOG_DB.Table("logs").Select("COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0)")
+	tx := LOG_DB.Table("logs").Select("COALESCE(sum(" + logColumn("prompt_tokens") + "), 0) + COALESCE(sum(" + logColumn("completion_tokens") + "), 0)")
 	if username != "" {
-		tx = tx.Where("username = ?", username)
+		tx = tx.Where(logColumn("username")+" = ?", username)
 	}
 	if tokenName != "" {
-		tx = tx.Where("token_name = ?", tokenName)
+		tx = tx.Where(logColumn("token_name")+" = ?", tokenName)
 	}
 	if startTimestamp != 0 {
-		tx = tx.Where("created_at >= ?", startTimestamp)
+		tx = tx.Where(logColumn("created_at")+" >= ?", startTimestamp)
 	}
 	if endTimestamp != 0 {
-		tx = tx.Where("created_at <= ?", endTimestamp)
+		tx = tx.Where(logColumn("created_at")+" <= ?", endTimestamp)
 	}
 	if modelName != "" {
-		tx = tx.Where("model_name = ?", modelName)
+		tx = tx.Where(logColumn("model_name")+" = ?", modelName)
 	}
-	tx.Where("type = ?", LogTypeConsume).Scan(&token)
+	tx.Where(logColumn("type")+" = ?", LogTypeConsume).Scan(&token)
 	return token
 }
 
 func CountOldLog(ctx context.Context, targetTimestamp int64) (int64, error) {
 	var total int64
-	if err := LOG_DB.WithContext(ctx).Model(&Log{}).Where("created_at < ?", targetTimestamp).Count(&total).Error; err != nil {
+	if err := LOG_DB.WithContext(ctx).Model(&Log{}).Where(logColumn("created_at")+" < ?", targetTimestamp).Count(&total).Error; err != nil {
 		return 0, err
 	}
 	return total, nil
@@ -731,7 +738,7 @@ func DeleteOldLogBatch(ctx context.Context, targetTimestamp int64, limit int) (i
 		return total, nil
 	}
 
-	result := LOG_DB.WithContext(ctx).Where("created_at < ?", targetTimestamp).Limit(limit).Delete(&Log{})
+	result := LOG_DB.WithContext(ctx).Where(logColumn("created_at")+" < ?", targetTimestamp).Limit(limit).Delete(&Log{})
 	if nil != result.Error {
 		return 0, result.Error
 	}

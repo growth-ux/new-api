@@ -41,21 +41,21 @@ func GetAllUserTask(userId int, startIdx int, num int, queryParams TaskQueryPara
 	var err error
 
 	// 初始化查询构建器
-	query := DB.Where("user_id = ?", userId)
+	query := DB.Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId)
 
 	if queryParams.MjID != "" {
-		query = query.Where("mj_id = ?", queryParams.MjID)
+		query = query.Where(quoteModelIdentifier(DB, "mj_id")+" = ?", queryParams.MjID)
 	}
 	if queryParams.StartTimestamp != "" {
 		// 假设您已将前端传来的时间戳转换为数据库所需的时间格式，并处理了时间戳的验证和解析
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != "" {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 
 	// 获取数据
-	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -72,20 +72,20 @@ func GetAllTasks(startIdx int, num int, queryParams TaskQueryParams) []*Midjourn
 
 	// 添加过滤条件
 	if queryParams.ChannelID != "" {
-		query = query.Where("channel_id = ?", queryParams.ChannelID)
+		query = query.Where(quoteModelIdentifier(DB, "channel_id")+" = ?", queryParams.ChannelID)
 	}
 	if queryParams.MjID != "" {
-		query = query.Where("mj_id = ?", queryParams.MjID)
+		query = query.Where(quoteModelIdentifier(DB, "mj_id")+" = ?", queryParams.MjID)
 	}
 	if queryParams.StartTimestamp != "" {
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != "" {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 
 	// 获取数据
-	err = query.Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Order(quoteModelIdentifier(DB, "id") + " desc").Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -97,7 +97,7 @@ func GetAllUnFinishTasks() []*Midjourney {
 	var tasks []*Midjourney
 	var err error
 	// get all tasks progress is not 100%
-	err = DB.Where("progress != ?", "100%").Find(&tasks).Error
+	err = DB.Where(quoteModelIdentifier(DB, "progress")+" != ?", "100%").Find(&tasks).Error
 	if err != nil {
 		return nil
 	}
@@ -111,7 +111,7 @@ func GetAllUnFinishTasks() []*Midjourney {
 func HasUnfinishedMidjourneyTasks() bool {
 	var id int
 	err := DB.Model(&Midjourney{}).
-		Where("progress != ?", "100%").
+		Where(quoteModelIdentifier(DB, "progress")+" != ?", "100%").
 		Limit(1).
 		Pluck("id", &id).Error
 	return err == nil && id != 0
@@ -120,7 +120,7 @@ func HasUnfinishedMidjourneyTasks() bool {
 func GetByOnlyMJId(mjId string) *Midjourney {
 	var mj *Midjourney
 	var err error
-	err = DB.Where("mj_id = ?", mjId).First(&mj).Error
+	err = DB.Where(quoteModelIdentifier(DB, "mj_id")+" = ?", mjId).First(&mj).Error
 	if err != nil {
 		return nil
 	}
@@ -130,7 +130,7 @@ func GetByOnlyMJId(mjId string) *Midjourney {
 func GetByMJId(userId int, mjId string) *Midjourney {
 	var mj *Midjourney
 	var err error
-	err = DB.Where("user_id = ? and mj_id = ?", userId, mjId).First(&mj).Error
+	err = DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? and "+quoteModelIdentifier(DB, "mj_id")+" = ?", userId, mjId).First(&mj).Error
 	if err != nil {
 		return nil
 	}
@@ -140,7 +140,7 @@ func GetByMJId(userId int, mjId string) *Midjourney {
 func GetByMJIds(userId int, mjIds []string) []*Midjourney {
 	var mj []*Midjourney
 	var err error
-	err = DB.Where("user_id = ? and mj_id in (?)", userId, mjIds).Find(&mj).Error
+	err = DB.Where(quoteModelIdentifier(DB, "user_id")+" = ? and "+quoteModelIdentifier(DB, "mj_id")+" in (?)", userId, mjIds).Find(&mj).Error
 	if err != nil {
 		return nil
 	}
@@ -150,7 +150,7 @@ func GetByMJIds(userId int, mjIds []string) []*Midjourney {
 func GetMjByuId(id int) *Midjourney {
 	var mj *Midjourney
 	var err error
-	err = DB.Where("id = ?", id).First(&mj).Error
+	err = DB.Where(quoteModelIdentifier(DB, "id")+" = ?", id).First(&mj).Error
 	if err != nil {
 		return nil
 	}
@@ -158,7 +158,7 @@ func GetMjByuId(id int) *Midjourney {
 }
 
 func UpdateProgress(id int, progress string) error {
-	return DB.Model(&Midjourney{}).Where("id = ?", id).Update("progress", progress).Error
+	return DB.Model(&Midjourney{}).Where(quoteModelIdentifier(DB, "id")+" = ?", id).Update("progress", progress).Error
 }
 
 func (midjourney *Midjourney) Insert() error {
@@ -192,7 +192,7 @@ func (midjourney *Midjourney) GetBillingChannelId() int {
 // UpdateWithStatus performs a conditional UPDATE guarded by fromStatus (CAS).
 // Uses Model().Select("*").Updates() to avoid GORM Save()'s INSERT fallback.
 func (midjourney *Midjourney) UpdateWithStatus(fromStatus string) (bool, error) {
-	result := DB.Model(midjourney).Where("status = ?", fromStatus).Select("*").Updates(midjourney)
+	result := DB.Model(midjourney).Where(quoteModelIdentifier(DB, "status")+" = ?", fromStatus).Select("*").Updates(midjourney)
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -201,13 +201,13 @@ func (midjourney *Midjourney) UpdateWithStatus(fromStatus string) (bool, error) 
 
 func MjBulkUpdate(mjIds []string, params map[string]any) error {
 	return DB.Model(&Midjourney{}).
-		Where("mj_id in (?)", mjIds).
+		Where(quoteModelIdentifier(DB, "mj_id")+" in (?)", mjIds).
 		Updates(params).Error
 }
 
 func MjBulkUpdateByTaskIds(taskIDs []int, params map[string]any) error {
 	return DB.Model(&Midjourney{}).
-		Where("id in (?)", taskIDs).
+		Where(quoteModelIdentifier(DB, "id")+" in (?)", taskIDs).
 		Updates(params).Error
 }
 
@@ -216,16 +216,16 @@ func CountAllTasks(queryParams TaskQueryParams) int64 {
 	var total int64
 	query := DB.Model(&Midjourney{})
 	if queryParams.ChannelID != "" {
-		query = query.Where("channel_id = ?", queryParams.ChannelID)
+		query = query.Where(quoteModelIdentifier(DB, "channel_id")+" = ?", queryParams.ChannelID)
 	}
 	if queryParams.MjID != "" {
-		query = query.Where("mj_id = ?", queryParams.MjID)
+		query = query.Where(quoteModelIdentifier(DB, "mj_id")+" = ?", queryParams.MjID)
 	}
 	if queryParams.StartTimestamp != "" {
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != "" {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 	_ = query.Count(&total).Error
 	return total
@@ -234,15 +234,15 @@ func CountAllTasks(queryParams TaskQueryParams) int64 {
 // CountAllUserTask returns total midjourney tasks for user
 func CountAllUserTask(userId int, queryParams TaskQueryParams) int64 {
 	var total int64
-	query := DB.Model(&Midjourney{}).Where("user_id = ?", userId)
+	query := DB.Model(&Midjourney{}).Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId)
 	if queryParams.MjID != "" {
-		query = query.Where("mj_id = ?", queryParams.MjID)
+		query = query.Where(quoteModelIdentifier(DB, "mj_id")+" = ?", queryParams.MjID)
 	}
 	if queryParams.StartTimestamp != "" {
-		query = query.Where("submit_time >= ?", queryParams.StartTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" >= ?", queryParams.StartTimestamp)
 	}
 	if queryParams.EndTimestamp != "" {
-		query = query.Where("submit_time <= ?", queryParams.EndTimestamp)
+		query = query.Where(quoteModelIdentifier(DB, "submit_time")+" <= ?", queryParams.EndTimestamp)
 	}
 	_ = query.Count(&total).Error
 	return total

@@ -49,7 +49,9 @@ func SetUserPermissionsInTx(tx *gorm.DB, userID int, permissions PermissionsMap)
 		if !isKnownResource(resource) {
 			continue
 		}
-		if err := tx.Where("ptype = ? AND v0 = ? AND v1 = ?", "p", UserSubject(userID), resource).Delete(&model.CasbinRule{}).Error; err != nil {
+		if err := tx.Where(clause.Eq{Column: clause.Column{Name: "ptype"}, Value: "p"}).
+			Where(clause.Eq{Column: clause.Column{Name: "v0"}, Value: UserSubject(userID)}).
+			Where(clause.Eq{Column: clause.Column{Name: "v1"}, Value: resource}).Delete(&model.CasbinRule{}).Error; err != nil {
 			return err
 		}
 		policies := userOverridePolicies(e, resource, actions)
@@ -83,7 +85,9 @@ func ClearUserPermissions(userID int) error {
 
 func ClearUserPermissionsInTx(tx *gorm.DB, userID int) error {
 	for _, resource := range registry {
-		if err := tx.Where("ptype = ? AND v0 = ? AND v1 = ?", "p", UserSubject(userID), resource.Resource).Delete(&model.CasbinRule{}).Error; err != nil {
+		if err := tx.Where(clause.Eq{Column: clause.Column{Name: "ptype"}, Value: "p"}).
+			Where(clause.Eq{Column: clause.Column{Name: "v0"}, Value: UserSubject(userID)}).
+			Where(clause.Eq{Column: clause.Column{Name: "v1"}, Value: resource.Resource}).Delete(&model.CasbinRule{}).Error; err != nil {
 			return err
 		}
 	}

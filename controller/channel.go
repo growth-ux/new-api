@@ -138,10 +138,10 @@ func restoreMultiKeyChannelIfAvailable(channel *model.Channel) {
 
 func applyChannelStatusFilter(query *gorm.DB, statusFilter int) *gorm.DB {
 	if statusFilter == common.ChannelStatusEnabled {
-		return query.Where("status = ?", common.ChannelStatusEnabled)
+		return query.Where(model.QuoteSQLIdentifier(model.DB, "status")+" = ?", common.ChannelStatusEnabled)
 	}
 	if statusFilter == 0 {
-		return query.Where("status != ?", common.ChannelStatusEnabled)
+		return query.Where(model.QuoteSQLIdentifier(model.DB, "status")+" != ?", common.ChannelStatusEnabled)
 	}
 	return query
 }
@@ -151,7 +151,7 @@ func buildChannelListQuery(group string, statusFilter int, typeFilter int) *gorm
 	query = model.ApplyChannelGroupFilter(query, group)
 	query = applyChannelStatusFilter(query, statusFilter)
 	if typeFilter >= 0 {
-		query = query.Where("type = ?", typeFilter)
+		query = query.Where(model.QuoteSQLIdentifier(model.DB, "type")+" = ?", typeFilter)
 	}
 	return query
 }
@@ -228,7 +228,7 @@ func GetAllChannels(c *gin.Context) {
 				continue
 			}
 			var tagChannels []*model.Channel
-			err := sortOptions.Apply(buildChannelListQuery(groupFilter, statusFilter, typeFilter).Where("tag = ?", *tag)).
+			err := sortOptions.Apply(buildChannelListQuery(groupFilter, statusFilter, typeFilter).Where(model.QuoteSQLIdentifier(model.DB, "tag")+" = ?", *tag)).
 				Omit("key").
 				Find(&tagChannels).Error
 			if err != nil {
@@ -266,7 +266,7 @@ func GetAllChannels(c *gin.Context) {
 		Type  int64
 		Count int64
 	}
-	if err := countQuery.Select("type, count(*) as count").Group("type").Find(&results).Error; err != nil {
+	if err := countQuery.Select(fmt.Sprintf("%s, count(*) AS %s", model.QuoteSQLIdentifier(model.DB, "type"), model.QuoteSQLIdentifier(model.DB, "count"))).Group(model.QuoteSQLIdentifier(model.DB, "type")).Find(&results).Error; err != nil {
 		common.SysError("failed to count channel types: " + err.Error())
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "获取渠道类型统计失败，请稍后重试"})
 		return
@@ -386,7 +386,7 @@ func SearchChannels(c *gin.Context) {
 		for _, tag := range tags {
 			if tag != nil && *tag != "" {
 				var tagChannels []*model.Channel
-				err := sortOptions.Apply(buildChannelListQuery(group, -1, -1).Where("tag = ?", *tag)).
+				err := sortOptions.Apply(buildChannelListQuery(group, -1, -1).Where(model.QuoteSQLIdentifier(model.DB, "tag")+" = ?", *tag)).
 					Omit("key").
 					Find(&tagChannels).Error
 				if err != nil {
@@ -907,7 +907,7 @@ func DeleteChannel(c *gin.Context) {
 func DeleteDisabledChannel(c *gin.Context) {
 	var ids []int
 	if err := model.DB.Model(&model.Channel{}).
-		Where("status = ? or status = ?", common.ChannelStatusAutoDisabled, common.ChannelStatusManuallyDisabled).
+		Where(model.QuoteSQLIdentifier(model.DB, "status")+" = ? or "+model.QuoteSQLIdentifier(model.DB, "status")+" = ?", common.ChannelStatusAutoDisabled, common.ChannelStatusManuallyDisabled).
 		Pluck("id", &ids).Error; err != nil {
 		common.ApiError(c, err)
 		return

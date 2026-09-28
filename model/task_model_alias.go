@@ -94,7 +94,7 @@ func buildTaskAliasView(generation *jsplugin.RoutingGeneration) *taskAliasView {
 
 	var channels []Channel
 	err := DB.Select("id", "type", "models", "model_mapping").
-		Where("status = ?", common.ChannelStatusEnabled).
+		Where(quoteModelIdentifier(DB, "status")+" = ?", common.ChannelStatusEnabled).
 		Find(&channels).Error
 	if err != nil {
 		common.SysError(fmt.Sprintf("rebuild task alias view: %s", err.Error()))

@@ -156,7 +156,7 @@ func UpdateModelMeta(c *gin.Context) {
 			return
 		}
 		// 只更新状态，防止误清空其他字段
-		if err := model.DB.Model(&model.Model{}).Where("id = ?", m.Id).Update("status", m.Status).Error; err != nil {
+		if err := model.DB.Model(&model.Model{}).Where(model.QuoteSQLIdentifier(model.DB, "id")+" = ?", m.Id).Update("status", m.Status).Error; err != nil {
 			common.ApiError(c, err)
 			return
 		}

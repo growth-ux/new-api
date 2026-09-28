@@ -30,7 +30,7 @@ func CreateTwoFAEnrollment(identity AuthSessionIdentity, authorization *AuthFlow
 			return err
 		}
 		var existing TwoFA
-		err := lockForUpdate(tx).Where("user_id = ?", identity.UserID).First(&existing).Error
+		err := lockForUpdate(tx).Where(quoteModelIdentifier(DB, "user_id")+" = ?", identity.UserID).First(&existing).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
@@ -86,7 +86,7 @@ func EnableTwoFAEnrollment(identity AuthSessionIdentity, token, code string) err
 			return err
 		}
 		var pending TwoFA
-		if err := lockForUpdate(tx).Where("id = ? AND user_id = ? AND is_enabled = ?", payload.TwoFAID, identity.UserID, false).First(&pending).Error; err != nil {
+		if err := lockForUpdate(tx).Where(quoteModelIdentifier(DB, "id")+" = ? AND "+quoteModelIdentifier(DB, "user_id")+" = ? AND "+quoteModelIdentifier(DB, "is_enabled")+" = ?", payload.TwoFAID, identity.UserID, false).First(&pending).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrTwoFASetupInvalid
 			}

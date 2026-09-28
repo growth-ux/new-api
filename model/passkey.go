@@ -128,7 +128,7 @@ func GetPasskeyByUserID(userID int) (*PasskeyCredential, error) {
 		return nil, ErrFriendlyPasskeyNotFound
 	}
 	var credential PasskeyCredential
-	if err := DB.Where("user_id = ?", userID).First(&credential).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "user_id")+" = ?", userID).First(&credential).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// 未找到记录是正常情况（用户未绑定），返回 ErrPasskeyNotFound 而不记录日志
 			return nil, ErrPasskeyNotFound
@@ -148,7 +148,7 @@ func GetPasskeyByCredentialID(credentialID []byte) (*PasskeyCredential, error) {
 
 	credIDStr := base64.StdEncoding.EncodeToString(credentialID)
 	var credential PasskeyCredential
-	if err := DB.Where("credential_id = ?", credIDStr).First(&credential).Error; err != nil {
+	if err := DB.Where(quoteModelIdentifier(DB, "credential_id")+" = ?", credIDStr).First(&credential).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			common.SysLog(fmt.Sprintf("GetPasskeyByCredentialID: passkey not found for credential ID length %d", len(credentialID)))
 			return nil, ErrFriendlyPasskeyNotFound
@@ -175,7 +175,7 @@ func UpdatePasskeyAssertionState(userID int, credential *webauthn.Credential, la
 			return err
 		}
 		var stored PasskeyCredential
-		if err := lockForUpdate(tx).Where("user_id = ? AND credential_id = ?", userID, credentialID).First(&stored).Error; err != nil {
+		if err := lockForUpdate(tx).Where(quoteModelIdentifier(tx, "user_id")+" = ? AND "+quoteModelIdentifier(tx, "credential_id")+" = ?", userID, credentialID).First(&stored).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrPasskeyNotFound
 			}
@@ -186,8 +186,8 @@ func UpdatePasskeyAssertionState(userID int, credential *webauthn.Credential, la
 			return system_setting.ErrPasskeyRPIDUnavailable
 		}
 		result := tx.Model(&PasskeyCredential{}).
-			Where("user_id = ? AND credential_id = ?", userID, credentialID).
-			Where("rp_id IS NULL OR rp_id = ? OR rp_id = ?", "", rpID).
+			Where(quoteModelIdentifier(tx, "user_id")+" = ? AND "+quoteModelIdentifier(tx, "credential_id")+" = ?", userID, credentialID).
+			Where(quoteModelIdentifier(tx, "rp_id")+" IS NULL OR "+quoteModelIdentifier(tx, "rp_id")+" = ? OR "+quoteModelIdentifier(tx, "rp_id")+" = ?", "", rpID).
 			Updates(map[string]any{
 				"rp_id":           rpID,
 				"sign_count":      credential.Authenticator.SignCount,
@@ -209,7 +209,7 @@ func UpdatePasskeyAssertionState(userID int, credential *webauthn.Credential, la
 }
 
 func upsertPasskeyCredentialWithTx(tx *gorm.DB, credential *PasskeyCredential) error {
-	if err := tx.Unscoped().Where("user_id = ?", credential.UserID).Delete(&PasskeyCredential{}).Error; err != nil {
+	if err := tx.Unscoped().Where(quoteModelIdentifier(tx, "user_id")+" = ?", credential.UserID).Delete(&PasskeyCredential{}).Error; err != nil {
 		common.SysLog(fmt.Sprintf("UpsertPasskeyCredential: failed to delete existing credential for user %d: %v", credential.UserID, err))
 		return fmt.Errorf("Passkey 保存失败，请重试")
 	}
@@ -282,7 +282,7 @@ func deletePasskeyWithAuthVersion(userID int, identity *AuthSessionIdentity) err
 			}
 		}
 		var credential PasskeyCredential
-		if err := lockForUpdate(tx).Where("user_id = ?", userID).First(&credential).Error; err != nil {
+		if err := lockForUpdate(tx).Where(quoteModelIdentifier(tx, "user_id")+" = ?", userID).First(&credential).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrPasskeyNotFound
 			}

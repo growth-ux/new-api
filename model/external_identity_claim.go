@@ -47,7 +47,7 @@ func ClaimExternalIdentityWithTx(tx *gorm.DB, provider, subject string, userId i
 		return result.Error
 	}
 	var subjectOwner ExternalIdentityClaim
-	if err := tx.Where("provider = ? AND subject = ?", provider, subject).First(&subjectOwner).Error; err != nil {
+	if err := tx.Where(quoteModelIdentifier(DB, "provider")+" = ? AND "+quoteModelIdentifier(DB, "subject")+" = ?", provider, subject).First(&subjectOwner).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrExternalIdentityAlreadyClaimed
 		}
@@ -58,7 +58,7 @@ func ClaimExternalIdentityWithTx(tx *gorm.DB, provider, subject string, userId i
 	}
 
 	var userClaim ExternalIdentityClaim
-	if err := tx.Where("provider = ? AND user_id = ?", provider, userId).First(&userClaim).Error; err != nil {
+	if err := tx.Where(quoteModelIdentifier(DB, "provider")+" = ? AND "+quoteModelIdentifier(DB, "user_id")+" = ?", provider, userId).First(&userClaim).Error; err != nil {
 		return err
 	}
 	if userClaim.Subject != subject {
@@ -72,13 +72,13 @@ func ReleaseExternalIdentityWithTx(tx *gorm.DB, provider string, userId int) err
 	if tx == nil || provider == "" || userId == 0 {
 		return errors.New("external identity release is invalid")
 	}
-	return tx.Where("provider = ? AND user_id = ?", provider, userId).
+	return tx.Where(quoteModelIdentifier(DB, "provider")+" = ? AND "+quoteModelIdentifier(DB, "user_id")+" = ?", provider, userId).
 		Delete(&ExternalIdentityClaim{}).Error
 }
 
 func GetUserByTelegramID(telegramID string) (*User, error) {
 	var user User
-	err := DB.Where("telegram_id = ?", telegramID).First(&user).Error
+	err := DB.Where(quoteModelIdentifier(DB, "telegram_id")+" = ?", telegramID).First(&user).Error
 	return &user, err
 }
 
@@ -98,7 +98,7 @@ func BindTelegramForSessionWithTx(tx *gorm.DB, identity AuthSessionIdentity, tel
 	if err := ClaimExternalIdentityWithTx(tx, ExternalIdentityProviderTelegram, telegramID, user.Id); err != nil {
 		return err
 	}
-	result := tx.Model(&User{}).Where("id = ? AND (telegram_id = ? OR telegram_id IS NULL)", user.Id, "").Update("telegram_id", telegramID)
+	result := tx.Model(&User{}).Where(quoteModelIdentifier(DB, "id")+" = ? AND ("+quoteModelIdentifier(DB, "telegram_id")+" = ? OR "+quoteModelIdentifier(DB, "telegram_id")+" IS NULL)", user.Id, "").Update("telegram_id", telegramID)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -112,7 +112,7 @@ func releaseAllExternalIdentitiesWithTx(tx *gorm.DB, userId int) error {
 	if tx == nil || userId == 0 {
 		return errors.New("external identity release is invalid")
 	}
-	return tx.Where("user_id = ?", userId).Delete(&ExternalIdentityClaim{}).Error
+	return tx.Where(quoteModelIdentifier(DB, "user_id")+" = ?", userId).Delete(&ExternalIdentityClaim{}).Error
 }
 
 // InitializeExternalIdentityClaims imports legacy Telegram bindings after the
@@ -121,7 +121,7 @@ func releaseAllExternalIdentitiesWithTx(tx *gorm.DB, userId int) error {
 func InitializeExternalIdentityClaims() error {
 	var users []User
 	if err := DB.Unscoped().Select("id", "telegram_id").
-		Where("telegram_id <> ?", "").Find(&users).Error; err != nil {
+		Where(clause.Neq{Column: clause.Column{Name: "telegram_id"}, Value: ""}).Find(&users).Error; err != nil {
 		return err
 	}
 	return DB.Transaction(func(tx *gorm.DB) error {

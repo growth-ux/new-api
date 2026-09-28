@@ -367,7 +367,7 @@ func (channel *Channel) saveStatusState() error {
 	if channel.ChannelInfo.IsMultiKey {
 		updates["channel_info"] = channel.ChannelInfo
 	}
-	return DB.Model(&Channel{}).Where("id = ?", channel.Id).Updates(updates).Error
+	return DB.Model(&Channel{}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: channel.Id}).Updates(updates).Error
 }
 
 func GetAllChannels(startIdx int, num int, selectAll bool, idSort bool, sortOptions ...ChannelSortOptions) ([]*Channel, error) {
@@ -385,7 +385,7 @@ func GetAllChannels(startIdx int, num int, selectAll bool, idSort bool, sortOpti
 func GetChannelsByTag(tag string, idSort bool, selectAll bool, sortOptions ...ChannelSortOptions) ([]*Channel, error) {
 	var channels []*Channel
 	order := resolveChannelSortOptions(idSort, sortOptions)
-	query := order.Apply(DB.Where("tag = ?", tag))
+	query := order.Apply(DB.Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}))
 	if !selectAll {
 		query = query.Omit("key")
 	}
@@ -414,7 +414,7 @@ func SearchChannels(keyword string, group string, model string, idSort bool, sor
 	baseQuery := DB.Model(&Channel{}).Omit("key")
 
 	// 构造WHERE子句
-	whereClause := "(id = ? OR name LIKE ? OR " + commonKeyCol + " = ? OR " + baseURLCol + " LIKE ?) AND " + modelsCol + " LIKE ?"
+	whereClause := "(" + quoteModelIdentifier(DB, "id") + " = ? OR " + quoteModelIdentifier(DB, "name") + " LIKE ? OR " + commonKeyCol + " = ? OR " + baseURLCol + " LIKE ?) AND " + modelsCol + " LIKE ?"
 	args := []any{common.String2Int(keyword), "%" + keyword + "%", keyword, "%" + keyword + "%", "%" + model + "%"}
 	baseQuery = ApplyChannelGroupFilter(baseQuery.Where(whereClause, args...), group)
 
@@ -439,9 +439,9 @@ func GetChannelById(id int, selectAll bool) (*Channel, error) {
 	channel := &Channel{Id: id}
 	var err error = nil
 	if selectAll {
-		err = DB.First(channel, "id = ?", id).Error
+		err = DB.Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(channel).Error
 	} else {
-		err = DB.Omit("key").First(channel, "id = ?", id).Error
+		err = DB.Omit("key").Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(channel).Error
 	}
 	if err != nil {
 		return nil, err
@@ -489,13 +489,13 @@ func BatchDeleteChannels(ids []int) (int64, error) {
 	}
 	var deletedCount int64
 	for _, chunk := range lo.Chunk(ids, 200) {
-		result := tx.Where("id in (?)", chunk).Delete(&Channel{})
+		result := tx.Where(quoteModelIdentifier(tx, "id")+" IN ?", chunk).Delete(&Channel{})
 		if result.Error != nil {
 			tx.Rollback()
 			return 0, result.Error
 		}
 		deletedCount += result.RowsAffected
-		if err := tx.Where("channel_id in (?)", chunk).Delete(&Ability{}).Error; err != nil {
+		if err := tx.Where(quoteModelIdentifier(tx, "channel_id")+" IN ?", chunk).Delete(&Ability{}).Error; err != nil {
 			tx.Rollback()
 			return 0, err
 		}
@@ -599,7 +599,9 @@ func (channel *Channel) Update() error {
 	if err != nil {
 		return err
 	}
-	DB.Model(channel).First(channel, "id = ?", channel.Id)
+	if err = DB.Model(channel).First(channel, quoteModelIdentifier(DB, "id")+" = ?", channel.Id).Error; err != nil {
+		return err
+	}
 	err = channel.UpdateAbilities(nil)
 	return err
 }
@@ -817,7 +819,7 @@ func UpdateChannelStatus(channelId int, usingKey string, status int, reason stri
 }
 
 func EnableChannelByTag(tag string) error {
-	err := DB.Model(&Channel{}).Where("tag = ?", tag).Update("status", common.ChannelStatusEnabled).Error
+	err := DB.Model(&Channel{}).Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}).Update("status", common.ChannelStatusEnabled).Error
 	if err != nil {
 		return err
 	}
@@ -829,7 +831,7 @@ func DisableChannelByTag(tag string) error {
 	// Explicit tag-level disable also cancels automatic restoration for
 	// channels that were already disabled because all keys were unavailable.
 	var channels []Channel
-	if err := DB.Where("tag = ?", tag).Find(&channels).Error; err != nil {
+	if err := DB.Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}).Find(&channels).Error; err != nil {
 		return err
 	}
 	for _, channel := range channels {
@@ -839,7 +841,7 @@ func DisableChannelByTag(tag string) error {
 			}
 		}
 	}
-	err := DB.Model(&Channel{}).Where("tag = ?", tag).Update("status", common.ChannelStatusManuallyDisabled).Error
+	err := DB.Model(&Channel{}).Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}).Update("status", common.ChannelStatusManuallyDisabled).Error
 	if err != nil {
 		return err
 	}
@@ -880,7 +882,7 @@ func EditChannelByTag(tag string, newTag *string, modelMapping *string, models *
 		updateData.HeaderOverride = headerOverride
 	}
 
-	err := DB.Model(&Channel{}).Where("tag = ?", tag).Updates(updateData).Error
+	err := DB.Model(&Channel{}).Where(clause.Eq{Column: clause.Column{Name: "tag"}, Value: tag}).Updates(updateData).Error
 	if err != nil {
 		return err
 	}
@@ -912,19 +914,19 @@ func UpdateChannelUsedQuota(id int, quota int) {
 }
 
 func updateChannelUsedQuota(id int, quota int) {
-	err := DB.Model(&Channel{}).Where("id = ?", id).Update("used_quota", gorm.Expr("used_quota + ?", quota)).Error
+	err := DB.Model(&Channel{}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).Update("used_quota", gorm.Expr(quoteModelIdentifier(DB, "used_quota")+" + ?", quota)).Error
 	if err != nil {
 		common.SysLog(fmt.Sprintf("failed to update channel used quota: channel_id=%d, delta_quota=%d, error=%v", id, quota, err))
 	}
 }
 
 func DeleteChannelByStatus(status int64) (int64, error) {
-	result := DB.Where("status = ?", status).Delete(&Channel{})
+	result := DB.Where(clause.Eq{Column: clause.Column{Name: "status"}, Value: status}).Delete(&Channel{})
 	return result.RowsAffected, result.Error
 }
 
 func DeleteDisabledChannel() (int64, error) {
-	result := DB.Where("status = ? or status = ?", common.ChannelStatusAutoDisabled, common.ChannelStatusManuallyDisabled).Delete(&Channel{})
+	result := DB.Where(quoteModelIdentifier(DB, "status")+" = ? or "+quoteModelIdentifier(DB, "status")+" = ?", common.ChannelStatusAutoDisabled, common.ChannelStatusManuallyDisabled).Delete(&Channel{})
 	return result.RowsAffected, result.Error
 }
 
@@ -935,8 +937,8 @@ func GetPaginatedTags(offset int, limit int) ([]*string, error) {
 func GetPaginatedChannelTags(query *gorm.DB, offset int, limit int) ([]*string, error) {
 	var tags []*string
 	err := query.
-		Select("DISTINCT tag").
-		Where("tag is not null AND tag != ''").
+		Select("DISTINCT " + quoteModelIdentifier(query, "tag")).
+		Where(quoteModelIdentifier(query, "tag") + " is not null AND " + quoteModelIdentifier(query, "tag") + " != ''").
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "tag"}}).
 		Offset(offset).
 		Limit(limit).
@@ -959,26 +961,26 @@ func SearchTags(keyword string, group string, model string, idSort bool) ([]*str
 		baseURLCol = `"base_url"`
 	}
 
-	order := "priority desc"
+	order := quoteModelIdentifier(DB, "priority") + " desc"
 	if idSort {
-		order = "id desc"
+		order = quoteModelIdentifier(DB, "id") + " desc"
 	}
 
 	// 构造基础查询
 	baseQuery := DB.Model(&Channel{}).Omit("key")
 
 	// 构造WHERE子句
-	whereClause := "(id = ? OR name LIKE ? OR " + commonKeyCol + " = ? OR " + baseURLCol + " LIKE ?) AND " + modelsCol + " LIKE ?"
+	whereClause := "(" + quoteModelIdentifier(DB, "id") + " = ? OR " + quoteModelIdentifier(DB, "name") + " LIKE ? OR " + commonKeyCol + " = ? OR " + baseURLCol + " LIKE ?) AND " + modelsCol + " LIKE ?"
 	args := []any{common.String2Int(keyword), "%" + keyword + "%", keyword, "%" + keyword + "%", "%" + model + "%"}
 	baseQuery = ApplyChannelGroupFilter(baseQuery.Where(whereClause, args...), group)
 
 	subQuery := baseQuery.
 		Select("tag").
-		Where("tag != ''").
+		Where(quoteModelIdentifier(DB, "tag") + " != ''").
 		Order(order)
 
 	err := DB.Table("(?) as sub", subQuery).
-		Select("DISTINCT tag").
+		Select("DISTINCT " + quoteModelIdentifier(DB, "tag")).
 		Find(&tags).Error
 
 	if err != nil {
@@ -1104,7 +1106,7 @@ func (channel *Channel) GetHeaderOverride() map[string]any {
 
 func GetChannelsByIds(ids []int) ([]*Channel, error) {
 	var channels []*Channel
-	err := DB.Where("id in (?)", ids).Find(&channels).Error
+	err := DB.Where(quoteModelIdentifier(DB, "id")+" IN ?", ids).Find(&channels).Error
 	return channels, err
 }
 
@@ -1116,7 +1118,7 @@ func BatchSetChannelTag(ids []int, tag *string) error {
 	}
 
 	// 更新标签
-	err := tx.Model(&Channel{}).Where("id in (?)", ids).Update("tag", tag).Error
+	err := tx.Model(&Channel{}).Where(quoteModelIdentifier(tx, "id")+" IN ?", ids).Update("tag", tag).Error
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -1155,25 +1157,25 @@ func CountAllTags() (int64, error) {
 
 func CountChannelTags(query *gorm.DB) (int64, error) {
 	var total int64
-	err := query.Where("tag is not null AND tag != ''").Distinct("tag").Count(&total).Error
+	err := query.Where(quoteModelIdentifier(query, "tag") + " is not null AND " + quoteModelIdentifier(query, "tag") + " != ''").Distinct("tag").Count(&total).Error
 	return total, err
 }
 
 // Get channels of specified type with pagination
 func GetChannelsByType(startIdx int, num int, idSort bool, channelType int) ([]*Channel, error) {
 	var channels []*Channel
-	order := "priority desc"
+	order := quoteModelIdentifier(DB, "priority") + " desc"
 	if idSort {
-		order = "id desc"
+		order = quoteModelIdentifier(DB, "id") + " desc"
 	}
-	err := DB.Where("type = ?", channelType).Order(order).Limit(num).Offset(startIdx).Omit("key").Find(&channels).Error
+	err := DB.Where(clause.Eq{Column: clause.Column{Name: "type"}, Value: channelType}).Order(order).Limit(num).Offset(startIdx).Omit("key").Find(&channels).Error
 	return channels, err
 }
 
 // Count channels of specific type
 func CountChannelsByType(channelType int) (int64, error) {
 	var count int64
-	err := DB.Model(&Channel{}).Where("type = ?", channelType).Count(&count).Error
+	err := DB.Model(&Channel{}).Where(clause.Eq{Column: clause.Column{Name: "type"}, Value: channelType}).Count(&count).Error
 	return count, err
 }
 
@@ -1184,7 +1186,7 @@ func CountChannelsGroupByType() (map[int64]int64, error) {
 		Count int64 `gorm:"column:count"`
 	}
 	var results []result
-	err := DB.Model(&Channel{}).Select("type, count(*) as count").Group("type").Find(&results).Error
+	err := DB.Model(&Channel{}).Select(quoteModelIdentifier(DB, "type") + ", count(*) as " + quoteModelIdentifier(DB, "count")).Group(quoteModelIdentifier(DB, "type")).Find(&results).Error
 	if err != nil {
 		return nil, err
 	}
