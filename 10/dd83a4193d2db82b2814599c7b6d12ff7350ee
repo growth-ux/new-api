@@ -1,0 +1,14 @@
+model/dm8.go
+  h_f75b2dd43abf29 6-7,9,31,48-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "10dd83a4193d2db82b2814599c7b6d12ff7350ee",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
