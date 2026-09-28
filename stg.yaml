@@ -40,6 +40,6 @@ spec:
     - name: http
       port: 3000
       targetPort: 3000
-      nodePort: 33003   # 若与已有服务冲突，改成其它空闲端口（gateway stg 用 33002）
+      nodePort: 32767   # 若与已有服务冲突，改成其它空闲端口（gateway stg 用 33002）
   selector:
     app: new-api-stg
