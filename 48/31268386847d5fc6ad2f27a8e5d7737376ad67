@@ -1,0 +1,19 @@
+stg.yaml
+  s_30e00f04e3ed76::t_39777c4a75b944 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4831268386847d5fc6ad2f27a8e5d7737376ad67",
+  "prompts": {},
+  "sessions": {
+    "s_30e00f04e3ed76": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790559991887",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
