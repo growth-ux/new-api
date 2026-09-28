@@ -1,8 +1,10 @@
 # new-api STG 环境 K8s 清单（部署模式参考 ldw-api-gateway/stg.yaml）
 #
-# 【当前为最简验证版】未注入任何配置，new-api 会用内置 SQLite
-# （数据存于容器 /data，Pod 重启会丢失），仅用于验证 Jenkins → K8s 部署链路是否打通。
-# 验证通过后，再补 SQL_DSN（连 DM8）、SESSION_SECRET 等配置：用 env 明文 或 Secret+envFrom。
+# 【接 DM8 数据库】部署前需一次性创建配置 Secret（密码不进仓库，自己在集群执行）：
+#   kubectl create secret generic new-api-stg-secret -n server \
+#     --from-literal=SQL_DSN='dm://<用户>:<密码>@<DM8内网地址>:5236?schema=<SCHEMA>' \
+#     --from-literal=SESSION_SECRET='<一串随机值>'
+# 创建后重新 apply 本文件，Pod 会重建并连 DM8。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -29,6 +31,9 @@ spec:
           image: swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/stg/ldw-new-api:latest
           ports:
             - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: new-api-stg-secret
 ---
 apiVersion: v1
 kind: Service
