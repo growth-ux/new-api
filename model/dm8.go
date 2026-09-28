@@ -3,7 +3,10 @@ package model
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	dm8driver "github.com/godoes/gorm-dameng/dm8"
@@ -25,7 +28,7 @@ func openDM8(dsn string) (*gorm.DB, error) {
 	}
 	db, err := gorm.Open(newDM8Dialector(dsn), newGormConfig(false))
 	if err != nil {
-		return nil, fmt.Errorf("open DM8 connection: %w", sanitizeDM8ErrorOrSelf(err))
+		return nil, fmt.Errorf("open DM8 connection: %w; network diagnosis: %s", sanitizeDM8ErrorOrSelf(err), dm8NetworkDiagnosis(dsn))
 	}
 	if err := registerDM8Create(db); err != nil {
 		if pool, poolErr := db.DB(); poolErr == nil {
@@ -40,6 +43,23 @@ func openDM8(dsn string) (*gorm.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+// dm8NetworkDiagnosis performs a bare TCP dial to the DSN host:port so a
+// communication error (e.g. dm error 6001) reports whether the network path is
+// refused, timed out, or reachable. It only exposes host:port and the dial
+// error, never credentials or query parameters.
+func dm8NetworkDiagnosis(dsn string) string {
+	parsed, err := url.Parse(dsn)
+	if err != nil || parsed.Host == "" {
+		return "unavailable (cannot parse host from DSN)"
+	}
+	conn, err := net.DialTimeout("tcp", parsed.Host, 5*time.Second)
+	if err != nil {
+		return "tcp dial " + parsed.Host + " failed: " + err.Error()
+	}
+	_ = conn.Close()
+	return "tcp dial " + parsed.Host + " ok (network reachable; failure is at DM protocol/auth layer)"
 }
 
 // checkDM8Compatibility confirms the connection is live and resolves the current
