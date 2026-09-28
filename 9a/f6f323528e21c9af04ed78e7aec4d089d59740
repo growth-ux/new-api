@@ -1,0 +1,289 @@
+model/usedata_rankings.go
+  s_2d1d5b5f337daa::t_3ada570acca2c8 23-25,27-31,43-46,48-52,59,62,64,68,70,73
+model/model_pricing_conversion.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 186-187,244-245
+controller/codex_usage.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 134
+model/quota_reserve.go
+  s_2d1d5b5f337daa::t_8a192c9f235e7c 10,114,129,131-132,147-148,154,156-157
+model/auth_flow.go
+  s_2d1d5b5f337daa::t_aeead0f190671a 113,123,125,128,131,134,250
+  s_2d1d5b5f337daa::t_3b3c87f0afd3d4 286-288
+controller/dm8_login_integration_test.go
+  s_2d1d5b5f337daa::t_f4376388eeea5b 93,154,165-166,169-174
+  s_2d1d5b5f337daa::t_0a347e697416bb 83
+  s_2d1d5b5f337daa::t_3af36a31a67c3f 167-168
+  s_2d1d5b5f337daa::t_aaf3c950c3d324 107-116,118-123
+  s_2d1d5b5f337daa::t_0666f1c10e61be 117
+  s_2d1d5b5f337daa::t_31dd8deb54caf2 72-76
+  s_2d1d5b5f337daa::t_00df8f97042d34 18,90,124-139
+  s_2d1d5b5f337daa::t_2f18f78e8cc5fe 91,140-142,144-146,150-152,175
+  s_2d1d5b5f337daa::t_720697402d8de9 155-164
+  s_2d1d5b5f337daa::t_dacc4aa0c12c3e 1-17,19-71,77-82,84-89,94-103,176
+  s_2d1d5b5f337daa::t_a9a4646f2fbff7 104-106
+  s_2d1d5b5f337daa::t_ed62b997501f93 92,143,147-149,153
+model/email_binding.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 141,158
+  s_2d1d5b5f337daa::t_08a786275f43fb 159
+model/midjourney.go
+  s_2d1d5b5f337daa::t_4663b77f29628e 44,47,51,54,58,75,78,81,84,88,100,123,133,143,153,161,195,219,222,225,228,237,239,242,245
+  s_2d1d5b5f337daa::t_45e910fd996757 114
+  s_2d1d5b5f337daa::t_f6157cabd6b2e7 204,210
+model/log.go
+  s_2d1d5b5f337daa::t_6dd410c90350ac 684
+  s_2d1d5b5f337daa::t_8fd9fbb42c9e70 19-20
+  s_2d1d5b5f337daa::t_dbd1d0f526c9ac 25-27,620-621,624-625,634-635,638,641,650-651,658-659,662
+  s_2d1d5b5f337daa::t_fd889d3c089724 150,474,484,487,490,493,496,499,568,570,577,580,583,586,589,686,689,692,695,698,700,706,741
+  s_2d1d5b5f337daa::t_94bbc4444fec90 502,508,547,592,599
+service/authz/override.go
+  s_2d1d5b5f337daa::t_cea9f222776c85 52-54,88-90
+model/perf_metric.go
+  s_2d1d5b5f337daa::t_98b6c4af350f9b 4-5,31-42,47-51,59-65,72,74,76,78,103-105,107-108,113,116,124-126,128-129,134,137,139,148
+  s_2d1d5b5f337daa::t_15952eb67d0756 117,138
+model/dm8_compat.go
+  s_2d1d5b5f337daa::t_5a9b88503f49f8 43-46,55,66,81
+model/login_verification.go
+  s_2d1d5b5f337daa::t_cdffde2fa0c520 9,34,42-46,49-52,86,92
+model/missing_models.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 13
+model/user_quota_adjustment.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 63
+model/user_session.go
+  s_2d1d5b5f337daa::t_96c0a98360ed46 14,200,202
+  s_2d1d5b5f337daa::t_34ce7b897619e9 476,485,531,561,577,583,619,637,675,686,730,732,735,754,764
+  s_2d1d5b5f337daa::t_8d074072cb149a 29-30,189,214,414,424,440,447
+  s_2d1d5b5f337daa::t_00e2034bf69c76 812-816,820-821,829-830,839-842,846-847,855-856
+  s_2d1d5b5f337daa::t_327375f0c559bf 376
+  s_2d1d5b5f337daa::t_942d9844898b00 450
+model/passkey_option.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 185
+controller/subscription.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 39,123,311,343
+model/channel.go
+  s_2d1d5b5f337daa::t_d09c66f5fe4746 1160,1189
+  s_2d1d5b5f337daa::t_9fabdd874717b8 370,492,498,822,834,844,885,917,924,929,940-941,973
+  s_2d1d5b5f337daa::t_327375f0c559bf 602-604
+  s_2d1d5b5f337daa::t_0b792efaf9babc 388,417,442,444
+  s_2d1d5b5f337daa::t_47f89ca4ab5b77 1167,1169
+  s_2d1d5b5f337daa::t_749cc67e97bb77 964,966,979,983,1109,1121,1171,1178
+model/usedata.go
+  s_2d1d5b5f337daa::t_3ff08437222afa 5,42-61,131,147,149-151,162-164,173-175,183-185,195
+model/ability.go
+  s_2d1d5b5f337daa::t_aec97ff57f099d 373,379
+  s_2d1d5b5f337daa::t_9c52f150b7d8c5 35-36,38-40
+  s_2d1d5b5f337daa::t_57c23335cf2de4 48-49,56-57
+  s_2d1d5b5f337daa::t_e841ee735c2a30 265,287,341,345,359,399
+  s_2d1d5b5f337daa::t_f6f4cd9afafb61 63,71-73,98-101,107,121,169,192
+  s_2d1d5b5f337daa::t_942d9844898b00 74,122
+model/channel_satisfy.go
+  s_2d1d5b5f337daa::t_327375f0c559bf 50,61
+model/account_security.go
+  s_2d1d5b5f337daa::t_aeead0f190671a 53,80,96,103,131,142,162,168
+  s_2d1d5b5f337daa::t_327375f0c559bf 125
+model/user.go
+  s_2d1d5b5f337daa::t_662d318abaa2db 677,1174,1178,1182,1186,1190
+  s_2d1d5b5f337daa::t_59e1b94f4e783a 309,311,333,353,532,534,555-556,566,1073,1160
+  s_2d1d5b5f337daa::t_fe33a6ca909872 150,174,208,235,587-590,777,805,867,943,954,981,1019,1055,1209,1225,1239,1254,1263,1268,1292,1323,1368,1376,1403,1422,1427,1432,1452,1458,1460-1461,1480,1482-1484,1512,1522,1530
+  s_2d1d5b5f337daa::t_ef89834f150c2a 1536
+  s_2d1d5b5f337daa::t_b87d6f5fcf9d03 476,483,489,492,496,498,719
+  s_2d1d5b5f337daa::t_68b287f53d20dc 1367
+model/vendor_meta.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 52,70,89,107,110,123
+controller/access_token.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 35
+model/dm8_migrator.go
+  s_2d1d5b5f337daa::t_0054ca60debe7c 28
+model/audit_log.go
+  s_2d1d5b5f337daa::t_1a4bcc1280107f 141,151,154,157,160,163,166,169,172,175,178,216,226-227,229
+  s_2d1d5b5f337daa::t_1c8a0f4535be29 185,231
+model/system_task.go
+  s_2d1d5b5f337daa::t_58367986b37b64 145,162,178,224,254,273
+  s_2d1d5b5f337daa::t_5806dc7c5d71d1 174-176,179-180,182,270-271,274-275,277
+  s_2d1d5b5f337daa::t_99e650a423666f 5,29-37,289-290,309,324,343,355,378-379,397-398,412,428,458,469-470
+  s_2d1d5b5f337daa::t_37ad73fa08c86f 440-441,448
+  s_2d1d5b5f337daa::t_4bf4da5df231e2 133,144,161,201,203,206,209,233-234,245
+model/passkey.go
+  s_2d1d5b5f337daa::t_5ab1d0836cf120 131,151
+  s_2d1d5b5f337daa::t_bab96117c6064b 178,189-190,212,285
+docs/superpowers/plans/2026-09-28-dm8-case-sensitive-sql-audit.md
+  s_2d1d5b5f337daa::t_6a21632f800ed5 51-56
+  s_2d1d5b5f337daa::t_a71c977211d3e3 32-34,40-42,48-50
+  s_2d1d5b5f337daa::t_e936e1dca77499 57-62
+  s_2d1d5b5f337daa::t_40f0b8b82098fc 1-31,35-39,43-47
+model/user_auth_cache.go
+  s_2d1d5b5f337daa::t_4cef0b2dac5594 12,235-239
+  s_2d1d5b5f337daa::t_f3f5f15a2d52a3 184,193
+controller/model_meta.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 159
+service/user_notify.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 28
+model/usedata_flow.go
+  s_2d1d5b5f337daa::t_7231d567e4ab0f 38
+  s_2d1d5b5f337daa::t_b1a187449d0900 39,46-49,60,62,65-66,77,79,82-83,115,161
+service/authz/seed.go
+  s_2d1d5b5f337daa::t_cea9f222776c85 38,44-47
+docs/dm8-case-sensitive.md
+  s_2d1d5b5f337daa::t_e936e1dca77499 52
+  s_2d1d5b5f337daa::t_2ae178ff82b77a 39-46
+  s_2d1d5b5f337daa::t_131e15b49a16a0 63-64
+  s_2d1d5b5f337daa::t_41743d0b6bdef1 60
+  s_2d1d5b5f337daa::t_5d3066f33364d2 1-24,65-73
+  s_2d1d5b5f337daa::t_a71c977211d3e3 47-51,61-62
+  s_2d1d5b5f337daa::t_6207a771e3fa3a 25,53-59
+  s_2d1d5b5f337daa::t_d26cd710deb98f 26-38
+service/authz/adapter.go
+  s_2d1d5b5f337daa::t_cea9f222776c85 24,96,101,107,113
+model/token.go
+  s_2d1d5b5f337daa::t_f49aaecee106db 12,187,195,202,267,277,291,399,401-402,428,430-431,441,454-455,463,478
+  s_2d1d5b5f337daa::t_942d9844898b00 110,213
+  s_2d1d5b5f337daa::t_107ed40083ea6c 496
+model/subscription.go
+  s_2d1d5b5f337daa::t_ede9174dcdac56 460,857,906,1059,1081,1185,1197,1342
+  s_2d1d5b5f337daa::t_053e9089ffc7d8 1148-1152
+  s_2d1d5b5f337daa::t_c824074f0949b5 18-19
+  s_2d1d5b5f337daa::t_bd119b06c440a5 1482
+  s_2d1d5b5f337daa::t_15cc5399a1856a 248,407,421,436,458,479,499,528,608,657,725,788,795,856,874,891,905,940,985,997,1058,1080,1171,1183,1195,1225,1319,1328,1341,1374,1414,1459,1500,1526
+  s_2d1d5b5f337daa::t_9612decb05d4d7 796
+  s_2d1d5b5f337daa::t_fddb2e49204d6a 1439-1441
+controller/channel_upstream_update.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 511,1017-1018,1021
+  s_2d1d5b5f337daa::t_bd119b06c440a5 31,708,722-723,726
+controller/channel-test.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 63
+model/sql_identifier.go
+  s_2d1d5b5f337daa::t_f3fbe34cb5943c 17-22
+  s_2d1d5b5f337daa::t_3ada570acca2c8 1-3,6-14,29
+  s_2d1d5b5f337daa::t_80920579101bfb 4-5,15-16,23-28
+model/task_plugin.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 27,37,58,138,291
+model/custom_oauth_provider.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 76,83,100,126,136,138
+controller/channel.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 141,144,154,231,389,910
+  s_2d1d5b5f337daa::t_37072246af857c 269
+model/password_crypto.go
+  s_2d1d5b5f337daa::t_aeead0f190671a 27,53
+model/vendor_management.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 43,62,128,147,149,161,229,237
+model/task_model_alias.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 97
+model/topup.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 77,100,110,128,138,314,321,352,380,387,396,427,436,571
+  s_2d1d5b5f337daa::t_408e1661e9a30d 97
+model/external_identity_claim.go
+  s_2d1d5b5f337daa::t_aeead0f190671a 50,61,75,81,101,115
+  s_2d1d5b5f337daa::t_d3591b3c719676 124
+service/codex_credential_refresh_task.go
+  s_2d1d5b5f337daa::t_43cd41904b3ece 17,73-78
+model/dm8_integration_test.go
+  s_2d1d5b5f337daa::t_cb203b323c71eb 427-431,434-443,455-456
+  s_2d1d5b5f337daa::t_d98dffd2d1d244 695
+  s_2d1d5b5f337daa::t_f4a02d1bdfe3cf 700-703,718-730,760-773
+  s_2d1d5b5f337daa::t_994864148c173f 315
+  s_2d1d5b5f337daa::t_79061a13ae693b 444-454
+  s_2d1d5b5f337daa::t_36a2e664ad8dba 235-246
+  s_2d1d5b5f337daa::t_3a5228d6c63067 277-279
+  s_2d1d5b5f337daa::t_aa77badd937d73 411-426
+  s_2d1d5b5f337daa::t_bc58767bd85162 581-613
+  s_2d1d5b5f337daa::t_173ff094c948dd 432-433
+  s_2d1d5b5f337daa::t_e9e9b43a7a9627 457-505
+  s_2d1d5b5f337daa::t_fd9661cf1415a1 376-401,409-410
+  s_2d1d5b5f337daa::t_57e690a87f9696 206-210,213-225,247-248
+  s_2d1d5b5f337daa::t_2abacc5bed9ce5 280-286
+  s_2d1d5b5f337daa::t_69acbe4b98f7bb 614-616,620-633,636-637,660-674
+  s_2d1d5b5f337daa::t_172419a1ea75ea 694
+  s_2d1d5b5f337daa::t_ee89673cb880a4 369-373
+  s_2d1d5b5f337daa::t_b620071bb449e0 692-693
+  s_2d1d5b5f337daa::t_01d559316d4035 335-343
+  s_2d1d5b5f337daa::t_af7e662fd83594 734-735,749-757
+  s_2d1d5b5f337daa::t_2de368cb7166b9 731-733,736-740,743,758-759
+  s_2d1d5b5f337daa::t_2f69fc95fdd22f 634-635
+  s_2d1d5b5f337daa::t_6b5e316783535a 638-659
+  s_2d1d5b5f337daa::t_2010c82b45d859 675-688
+  s_2d1d5b5f337daa::t_6886c76b0a84bd 824,830-838
+  s_2d1d5b5f337daa::t_5645b51945857a 211-212,226-234
+  s_2d1d5b5f337daa::t_8e6cd5b49be4aa 124-141
+  s_2d1d5b5f337daa::t_f9cd4cca37f304 50-52
+  s_2d1d5b5f337daa::t_cb5352858dc462 741-742,744
+  s_2d1d5b5f337daa::t_955694e9489275 142-152,155-158,180-181
+  s_2d1d5b5f337daa::t_7a1330ce119a96 165-179
+  s_2d1d5b5f337daa::t_08b33f2ec2eb40 745-748
+  s_2d1d5b5f337daa::t_02ccc3333fa71d 886
+  s_2d1d5b5f337daa::t_2c4a22c7aaf625 249-266,274-276,290-291
+  s_2d1d5b5f337daa::t_5a9b88503f49f8 113
+  s_2d1d5b5f337daa::t_6dd410c90350ac 405-407
+  s_2d1d5b5f337daa::t_179367de2f0a21 506-554,561-580
+  s_2d1d5b5f337daa::t_0b993cfcd3195c 346-368,374-375
+  s_2d1d5b5f337daa::t_26ad174f5a0792 555-560,617-618
+  s_2d1d5b5f337daa::t_fc342c80cde52d 619
+  s_2d1d5b5f337daa::t_a3e7f79ac3aaa9 300-302,314,316
+  s_2d1d5b5f337daa::t_dc1f7dd9835a71 267-273
+  s_2d1d5b5f337daa::t_3663e0f94567b5 696
+  s_2d1d5b5f337daa::t_e41b0da8f1b60b 297-299
+  s_2d1d5b5f337daa::t_9a64f09ed73406 159-164
+  s_2d1d5b5f337daa::t_ebad87cb497128 287-289
+  s_2d1d5b5f337daa::t_60fa29b243107c 292-296,303-313,317-321
+  s_2d1d5b5f337daa::t_3e44d2802aa9d6 322-334,344-345
+  s_2d1d5b5f337daa::t_35ce7ef599638f 402-404,408
+  s_2d1d5b5f337daa::t_5f4424d2ca11ce 689-691,697-699,704-717,774-775
+  s_2d1d5b5f337daa::t_bb7578cfc5503a 153-154
+  s_2d1d5b5f337daa::t_e0f4185a90b656 182-205
+model/task.go
+  s_2d1d5b5f337daa::t_7dd7771a47fac5 369-371
+  s_2d1d5b5f337daa::t_f6157cabd6b2e7 459,476,575
+  s_2d1d5b5f337daa::t_4663b77f29628e 288,291,294,297,300,304,307,313,330,333,336,339,342,345,348,351,354,358,368,384,412,429,444,558,589,592,595,598,601,604,607,610,613,622,624,627,630,633,636,639
+  s_2d1d5b5f337daa::t_45e910fd996757 398-400
+model/user_oauth_binding.go
+  s_2d1d5b5f337daa::t_aeead0f190671a 26,33,43,59,98,111,118,134,138,144
+controller/user.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 297
+model/model_metadata_sync.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 78,81,265
+model/system_instance.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 74,79,84
+model/model_meta.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 206,249,258,268,306,322,337,346,393,419-421,458-462,466,487,491,493,497,500,506
+  s_2d1d5b5f337daa::t_408e1661e9a30d 392,418,457
+  s_2d1d5b5f337daa::t_a9c7bf771eac85 5
+model/dm8.go
+  s_2d1d5b5f337daa::t_0e8bef3bac2629 83-89
+model/twofa.go
+  s_2d1d5b5f337daa::t_bcbd2fda7180ef 140,175,252,261
+  s_2d1d5b5f337daa::t_0b51ab36807752 344
+  s_2d1d5b5f337daa::t_5ab1d0836cf120 45,69,111,201,210,228
+model/checkin.go
+  s_2d1d5b5f337daa::t_08a786275f43fb 104-105,169-175
+  s_2d1d5b5f337daa::t_f332dca7a6140c 35,37,47
+service/codex_credential_refresh.go
+  s_2d1d5b5f337daa::t_07a10eee88d142 94
+model/redemption.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 49,78,80,100,102,114,166,239,253
+  s_2d1d5b5f337daa::t_327375f0c559bf 89,95,133
+model/prefill_group.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 103,123,125
+model/twofa_enrollment.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 33,89
+model/user_cache.go
+  s_2d1d5b5f337daa::t_f332dca7a6140c 210,223,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9af6f323528e21c9af04ed78e7aec4d089d59740",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_2d1d5b5f337daa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e753-3cd5-70f1-be38-10e74e04d776",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
