@@ -1,0 +1,31 @@
+stg.yaml
+  s_edc06ebfce2ad4::t_b40821af97d5ca 6-29
+  s_edc06ebfce2ad4::t_8da2710cab232a 3-5
+  s_edc06ebfce2ad4::t_d62226436acaf7 30-32
+jenkins-deploy-stg.sh
+  s_30e00f04e3ed76::t_3c27b1d08465fe 4,9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d9e9ccbaad5f676570ff6eb51ef90bf3227d207f",
+  "prompts": {},
+  "sessions": {
+    "s_30e00f04e3ed76": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790559991887",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    },
+    "s_edc06ebfce2ad4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cd76-1e2f-7b73-9777-81891fc3892f",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
