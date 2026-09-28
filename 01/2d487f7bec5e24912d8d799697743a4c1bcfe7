@@ -1,0 +1,14 @@
+stg.yaml
+  h_f75b2dd43abf29 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "012d487f7bec5e24912d8d799697743a4c1bcfe7",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
