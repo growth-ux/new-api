@@ -1,0 +1,28 @@
+model/dm8_startup_test.go
+  s_e7dc5699b4b895::t_4546bdbb24f2bd 40,53
+  s_e7dc5699b4b895::t_7d29f52dd8463a 1-7,9-39,41-52,54-63,65-132
+  s_e7dc5699b4b895::t_e7e84a61c30571 64
+  s_e7dc5699b4b895::t_af40f46c61f012 8
+model/dm8_integration_test.go
+  s_e7dc5699b4b895::t_49a9c76d29a516 97-99,101-103,105-109
+model/audit_log.go
+  s_e7dc5699b4b895::t_4546bdbb24f2bd 246-248
+model/main.go
+  s_e7dc5699b4b895::t_4546bdbb24f2bd 233-235,279-281,300,340-342,399,414-420,422-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dd0f44fc807428690f5183808241b98ae88178a5",
+  "prompts": {},
+  "sessions": {
+    "s_e7dc5699b4b895": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ebd4-31a5-7973-975c-e633dae48e0e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
