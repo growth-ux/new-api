@@ -1,0 +1,34 @@
+AGENTS.md
+  s_5faabd3f1bcd53::t_4a747adafb7437 1
+CLAUDE.md
+  s_b0cb451e8a78c0::t_01c9af524eec6d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ffca7cd3551d801b702281d92562c00b1cc36551",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_5faabd3f1bcd53": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790661225069",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    },
+    "s_b0cb451e8a78c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ebc7-1e69-7192-9683-179f3dbf4292",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
