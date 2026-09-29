@@ -1,0 +1,38 @@
+model/dm8_init_sql_test.go
+  s_e7dc5699b4b895::t_44983ee0f8a8d0 129-144,149-153,159
+  s_e7dc5699b4b895::t_2c0afdda61f1cb 154-158
+  s_e7dc5699b4b895::t_e77d7db760c35f 145-148
+docs/dm8-case-sensitive.md
+  s_e7dc5699b4b895::t_9f7d1eb3e4634b 15
+  s_e7dc5699b4b895::t_6594d8418f8c3b 13,17,69
+model/dm8_integration_test.go
+  s_e7dc5699b4b895::t_f5e6be901387fc 6,17-19
+  s_e7dc5699b4b895::t_9ae844b18ce906 20
+model/dm8_startup_test.go
+  s_e7dc5699b4b895::t_d011f1defbacfa 55,62-66
+  s_e7dc5699b4b895::t_7cdac1fb7328e2 75-77,169-170
+  s_e7dc5699b4b895::t_fdfbbf0fb49296 4-8,10,12,20-54,56-61,67-74,78-168,171-200
+  s_e7dc5699b4b895::t_d87b23ff2042e9 201
+model/dm8_compat.go
+  s_e7dc5699b4b895::t_f5e6be901387fc 30-31
+docs/superpowers/plans/2026-09-29-dm8-startup-sql-separation.md
+  s_e7dc5699b4b895::t_1c652569629fce 1-113
+docs/superpowers/specs/2026-09-29-database-release-separation-design.md
+  s_e7dc5699b4b895::t_1fa4275a6b21e2 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e378a923ef0d433d3bfa3df153e4b952600477e",
+  "prompts": {},
+  "sessions": {
+    "s_e7dc5699b4b895": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ebd4-31a5-7973-975c-e633dae48e0e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
