@@ -1,0 +1,26 @@
+model/gorm_logger.go
+  h_f75b2dd43abf29 21
+model/log.go
+  s_ea752d45147c3a::t_ea5b8d3213ee65 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96223f6ed7981b922242ffb1ee8aea3d531d6bcc",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_ea752d45147c3a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e821-8ace-7610-9df3-06815d87882c",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
