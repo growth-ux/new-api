@@ -17,13 +17,13 @@ import (
 // present in the insert; otherwise it emits a plain INSERT. new-api relies on
 // OnConflict against non-PK unique columns (auth flow token_hash, authz role key,
 // system_instance node_name, perf_metric composite, external identity claims),
-// which a plain INSERT turns into a hard -6625 uniqueness error instead of an
+// which a plain INSERT turns into a uniqueness error instead of an
 // ignore/upsert.
 //
 // The driver's own path is preserved: original runs first, so primary-key MERGE
-// and conflict-free inserts are untouched. Only a -6625 from the plain INSERT is
-// intercepted and resolved here. DM8 keeps a transaction usable after a statement
-// error (verified), so the fallback runs inside the caller's transaction.
+// and conflict-free inserts are untouched. Only a DM8 uniqueness error from the
+// plain INSERT is intercepted and resolved here. DM8 keeps a transaction usable
+// after a statement error (verified), so the fallback runs inside the caller's transaction.
 func registerDM8Create(db *gorm.DB) error {
 	if db.Dialector.Name() != "dm" {
 		return fmt.Errorf("DM create adapter received %s", db.Dialector.Name())

@@ -13,10 +13,12 @@ import (
 	"gorm.io/gorm"
 )
 
-// dm8UniqueViolationCode is the DM8 server error code for a uniqueness
-// constraint violation, verified against the target build (-6625). It is used to
-// distinguish an expected conflict from other failures in the DM create adapter.
-const dm8UniqueViolationCode = int32(-6625)
+// DM8 builds report unique constraint violations as either -6602 or -6625.
+// Both must reach the create adapter's conflict handling path.
+const (
+	dm8UniqueViolationLegacyCode  = int32(-6602)
+	dm8UniqueViolationCurrentCode = int32(-6625)
+)
 
 // openDM8 opens a DM8 connection through the wrapped community dialector. It
 // verifies server compatibility before returning and closes the pool on failure.
@@ -119,5 +121,5 @@ func sanitizeDM8ErrorOrSelf(err error) error {
 // violation, used by the DM create adapter to honor OnConflict DoNothing.
 func isDM8UniqueViolation(err error) bool {
 	code, ok := dm8ErrorCode(err)
-	return ok && code == dm8UniqueViolationCode
+	return ok && (code == dm8UniqueViolationLegacyCode || code == dm8UniqueViolationCurrentCode)
 }
