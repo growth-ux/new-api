@@ -10,7 +10,7 @@
 SELECT CASE_SENSITIVE();
 ```
 
-返回值必须是 `1`。使用专用测试用户和以 `NEWAPI_TEST_` 开头的 schema。达梦空库先由部署账号执行 [init.sql](../database/dm8/init.sql)，应用运行账号再连接该 schema；建表、建索引和锁记录的准备工作由这一个文件完成。
+返回值必须是 `1`。[init.sql](../database/dm8/init.sql) 中的对象名固定指定 `LDW_AI_AGG`，生产环境先创建该用户及同名 schema，再由部署账号执行 SQL；不能将原文件直接用于其他 schema。集成测试使用以 `NEWAPI_TEST_` 开头的隔离 schema，测试辅助仅在测试进程中把目标 schema 替换为该测试 schema。
 
 部署账号需要创建表和索引的权限。应用运行账号按正常业务读写授予对象权限，不需要为启动迁移授予 `SELECT ANY DICTIONARY` 或建改表权限。驱动探针等明确要创建临时表的测试仍使用有相应权限的独立测试账号。本地旧测试账号 `NEWAPI_TEST_CASE1` 曾用于自动迁移验证，因此本次另建低权限账号做运行验证。
 
@@ -66,4 +66,4 @@ TEST_DM_SCHEMA=NEWAPI_TEST_CASE1 \
 go test ./model -run '^TestDM8' -count=1
 ```
 
-启动验证先执行 `init.sql`，再以运行账号设置 `SQL_DSN` 启动应用。`TestDM8StartupWithInitSQL` 会在隔离测试 schema 中重新执行该 SQL，连续进行两次启动数据初始化并确认没有结构变更。
+生产启动验证先在 `LDW_AI_AGG` 执行 `init.sql`，再以运行账号设置 `SQL_DSN` 启动应用。`TestDM8StartupWithInitSQL` 在隔离测试 schema 中替换限定名前缀并执行相同 SQL，连续进行两次启动数据初始化并确认没有结构变更。

@@ -22,9 +22,13 @@ func resetDM8Schema(t *testing.T, db *gorm.DB) {
 	applyDM8InitSQL(t, db, "all")
 }
 
-// applyDM8InitSQL runs the shipped SQL in a protected test schema only.
+// applyDM8InitSQL runs the shipped SQL against a protected test schema,
+// replacing only its production schema qualifier.
 func applyDM8InitSQL(t *testing.T, db *gorm.DB, section string) {
 	t.Helper()
+	var schema string
+	require.NoError(t, db.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&schema).Error)
+	require.True(t, strings.HasPrefix(schema, "NEWAPI_TEST_"), "test schema %q must use the NEWAPI_TEST_ prefix", schema)
 	_, file, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	sqlFile := filepath.Join(filepath.Dir(file), "..", "database", "dm8", "init.sql")
@@ -46,7 +50,7 @@ func applyDM8InitSQL(t *testing.T, db *gorm.DB, section string) {
 			continue
 		}
 		if section == "all" || section == "log" && inLog {
-			selected = append(selected, line)
+			selected = append(selected, strings.ReplaceAll(line, `"LDW_AI_AGG".`, dm8QuoteIdent(schema)+"."))
 		}
 	}
 	require.Contains(t, []string{"all", "log"}, section)
