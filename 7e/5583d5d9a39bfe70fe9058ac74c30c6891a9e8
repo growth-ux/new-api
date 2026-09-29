@@ -1,0 +1,26 @@
+model/dm8_init_sql_test.go
+  s_e7dc5699b4b895::t_0f2e760f185b5b 1-18,25-65,77,88-91,128
+  s_e7dc5699b4b895::t_6735ff90f96248 66-76,78-87,92-104,106-112,114-127
+  s_e7dc5699b4b895::t_287310eac4ef7c 19-24
+  s_e7dc5699b4b895::t_1ce033f180c156 105,113
+database/dm8/init.sql
+  s_e7dc5699b4b895::t_0badbbd58fbb1a 1-376
+model/dm8_integration_test.go
+  s_e7dc5699b4b895::t_5554d769856034 147,185,209,252,295,325,349,379,414,782
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e5583d5d9a39bfe70fe9058ac74c30c6891a9e8",
+  "prompts": {},
+  "sessions": {
+    "s_e7dc5699b4b895": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ebd4-31a5-7973-975c-e633dae48e0e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
