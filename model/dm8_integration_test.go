@@ -144,7 +144,7 @@ func TestDM8MigratorRecognizesQuotedTable(t *testing.T) {
 func TestDM8StartupReadPaths(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 
 	_, err := GetAllEnableAbilityWithChannels()
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestDM8StartupReadPaths(t *testing.T) {
 func TestDM8SystemTaskLifecycle(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 
 	task, err := CreateSystemTask("dm8-case-task", map[string]string{"probe": "case1"}, nil)
 	require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestDM8SystemTaskLifecycle(t *testing.T) {
 func TestDM8AbilityChannelSelection(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 
 	tag := "dm8-case-tag"
 	channel := Channel{Name: "dm8-case-channel", Key: "test-key", Models: "dm8-case-model", Group: "default", Tag: &tag, Status: common.ChannelStatusEnabled}
@@ -249,7 +249,7 @@ func TestDM8AbilityChannelSelection(t *testing.T) {
 func TestDM8UserRegistrationAndLogin(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 
 	user := &User{Username: "dm8-case-user", Password: "case-password-123", Email: "dm8-case-user@example.test", Status: common.UserStatusEnabled}
 	require.NoError(t, user.Insert(0))
@@ -292,7 +292,7 @@ func TestDM8UserRegistrationAndLogin(t *testing.T) {
 func TestDM8UserSessionLifecycle(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 
 	user := &User{Username: "dm8-session-user", Password: "unused-password", Status: common.UserStatusEnabled, AuthVersion: 1}
 	require.NoError(t, db.Create(user).Error)
@@ -322,7 +322,7 @@ func TestDM8UserSessionLifecycle(t *testing.T) {
 func TestDM8AccessTokenLookup(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 	token := &Token{UserId: 101, Key: "dm8-case-access-token", Name: "dm8-test", Status: common.TokenStatusEnabled, ExpiredTime: -1, UnlimitedQuota: true}
 	require.NoError(t, token.Insert())
 	t.Cleanup(func() { _ = db.Unscoped().Delete(token).Error })
@@ -346,7 +346,7 @@ func TestDM8AccessTokenLookup(t *testing.T) {
 func TestDM8QuotaReservation(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 	user := &User{Username: "dm8-quota-user", Password: "unused-password", Quota: 100}
 	require.NoError(t, db.Create(user).Error)
 	t.Cleanup(func() { _ = db.Unscoped().Delete(user).Error })
@@ -376,7 +376,7 @@ func TestDM8QuotaReservation(t *testing.T) {
 func TestDM8SubscriptionQueries(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 	plan := &SubscriptionPlan{Title: "dm8-case-plan", Currency: "USD", DurationUnit: SubscriptionDurationMonth, DurationValue: 1, Enabled: true}
 	require.NoError(t, db.Create(plan).Error)
 	t.Cleanup(func() { _ = db.Delete(plan).Error })
@@ -411,7 +411,7 @@ func TestDM8SubscriptionQueries(t *testing.T) {
 func TestDM8AuthFlowLifecycle(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
-	require.NoError(t, migrateDB())
+	resetDM8Schema(t, db)
 	match := AuthFlowMatch{Purpose: "dm8-case-flow"}
 	token, flow, err := CreateAuthFlow(AuthFlowCreate{Purpose: match.Purpose, ExpiresAt: time.Now().Add(time.Minute)})
 	require.NoError(t, err)
@@ -779,8 +779,7 @@ func TestDM8PrefillSoftDeleteUniqueness(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
 
-	require.NoError(t, db.AutoMigrate(&PrefillGroup{}))
-	t.Cleanup(func() { _ = db.Migrator().DropTable(&PrefillGroup{}) })
+	resetDM8Schema(t, db)
 
 	first := PrefillGroup{Name: "dm8-prefill", Type: "test", Items: JSONValue(`{}`)}
 	require.NoError(t, first.Insert())
