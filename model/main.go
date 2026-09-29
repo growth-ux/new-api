@@ -230,7 +230,9 @@ func InitDB() (err error) {
 		if common.UsingMainDatabase(common.DatabaseTypeMySQL) {
 			//_, _ = sqlDB.Exec("ALTER TABLE channels MODIFY model_mapping TEXT;") // TODO: delete this line when most users have upgraded
 		}
-		common.SysLog("database migration started")
+		if !common.UsingMainDatabase(common.DatabaseTypeDM) {
+			common.SysLog("database migration started")
+		}
 		err = migrateDB()
 		return err
 	} else {
@@ -274,7 +276,9 @@ func InitLogDB() (err error) {
 		if !common.IsMasterNode {
 			return nil
 		}
-		common.SysLog("database migration started")
+		if !common.UsingLogDatabase(common.DatabaseTypeDM) {
+			common.SysLog("database migration started")
+		}
 		err = migrateLOGDB()
 		return err
 	} else {
@@ -293,7 +297,7 @@ func ensureUserQuotaColumns(db *gorm.DB, dbType common.DatabaseType) error {
 		common.SysLog("SKIP_64BIT_QUOTA_SCHEMA_CHECK=true; skipping user quota schema check")
 		return nil
 	}
-	if db == nil || dbType == common.DatabaseTypeSQLite {
+	if db == nil || dbType == common.DatabaseTypeSQLite || dbType == common.DatabaseTypeDM {
 		return nil
 	}
 	if !db.Migrator().HasTable(&User{}) {
@@ -333,6 +337,9 @@ func is64BitIntegerType(dbType common.DatabaseType, dataType string) bool {
 }
 
 func migrateDB() error {
+	if common.UsingMainDatabase(common.DatabaseTypeDM) {
+		return initializeUserMigrationData()
+	}
 	if err := migrateTokenKeyUniqueness(DB); err != nil {
 		return err
 	}
@@ -389,21 +396,7 @@ func migrateDB() error {
 	if err != nil {
 		return err
 	}
-	if common.UsingMainDatabase(common.DatabaseTypeDM) {
-		// Seed the DM8 transaction-lock anchor used to serialize email writes.
-		if err := ensureDM8TransactionLocks(DB); err != nil {
-			return err
-		}
-		// GORM's generic CreateIndex drops the partial `where: deleted_at IS NULL`
-		// condition; restore DM8-equivalent soft-delete uniqueness for prefill groups.
-		if err := ensureDM8PrefillUniqueIndex(DB); err != nil {
-			return err
-		}
-	}
-	if err := InitializeUserAuthVersions(); err != nil {
-		return err
-	}
-	if err := InitializeExternalIdentityClaims(); err != nil {
+	if err := initializeUserMigrationData(); err != nil {
 		return err
 	}
 	if common.UsingMainDatabase(common.DatabaseTypeSQLite) {
@@ -418,7 +411,17 @@ func migrateDB() error {
 	return nil
 }
 
+func initializeUserMigrationData() error {
+	if err := InitializeUserAuthVersions(); err != nil {
+		return err
+	}
+	return InitializeExternalIdentityClaims()
+}
+
 func migrateLOGDB() error {
+	if common.UsingLogDatabase(common.DatabaseTypeDM) {
+		return nil
+	}
 	if err := MigrateAuditLogs(); err != nil {
 		return err
 	}

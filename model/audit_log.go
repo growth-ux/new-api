@@ -243,6 +243,9 @@ func GetUserAccessTokenStatus(userId int) (*UserAccessTokenStatus, error) {
 // MigrateAuditLogs also supports independently configured ClickHouse log stores.
 // No TTL clause or usage-log cleanup integration is intentional.
 func MigrateAuditLogs() error {
+	if common.UsingLogDatabase(common.DatabaseTypeDM) {
+		return nil
+	}
 	if !common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
 		return LOG_DB.AutoMigrate(&AuditLog{})
 	}

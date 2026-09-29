@@ -80,13 +80,6 @@ func checkDM8Compatibility(db *gorm.DB) error {
 	if strings.TrimSpace(schema) == "" {
 		return errors.New("DM8 current schema is empty; check the connection schema option")
 	}
-	// The community migrator reads SYS.SYSOBJECTS to inspect tables and indexes.
-	// Its HasTable method discards query errors, so without catalog access a
-	// second startup can attempt to create already existing tables.
-	var catalogRows int64
-	if err := db.Raw("SELECT COUNT(*) FROM SYS.SYSOBJECTS WHERE ROWNUM <= 1").Scan(&catalogRows).Error; err != nil {
-		return fmt.Errorf("DM8 migration metadata unavailable: current user must be able to read SYS.SYSOBJECTS (for example via SELECT ANY DICTIONARY): %w", sanitizeDM8ErrorOrSelf(err))
-	}
 	common.SysLog("using DM8 as database, current schema: " + schema)
 	return nil
 }

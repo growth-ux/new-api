@@ -94,28 +94,25 @@ func saveDM8Globals(t *testing.T, db *gorm.DB) {
 	})
 }
 
-// TestDM8StartupMigration runs the real production migration path against DM8 on a
-// fresh schema, then runs it a second time to prove idempotency, and verifies the
-// corrected index metadata and the soft-delete partial unique index.
-func TestDM8StartupMigration(t *testing.T) {
+// TestDM8StartupWithInitSQL verifies that the shipped SQL leaves a schema ready
+// for repeated startup data initialization without any structural changes.
+func TestDM8StartupWithInitSQL(t *testing.T) {
 	db := openDM8TestDB(t)
-	dropAllDM8Tables(t, db)
-	saveDM8Globals(t, db)
+	resetDM8Schema(t, db)
+	recorder := &migrationSQLRecorder{}
+	saveDM8Globals(t, db.Session(&gorm.Session{Logger: recorder}))
 
-	require.NoError(t, migrateDB(), "first production migration must succeed on DM8")
-	require.NoError(t, MigrateAuditLogs(), "audit log migration must succeed on DM8")
-
-	// Second run must not fail and must not need destructive re-DDL.
-	require.NoError(t, migrateDB(), "second migration run must be idempotent")
+	for range 2 {
+		require.NoError(t, migrateDB())
+		require.NoError(t, MigrateAuditLogs())
+	}
+	require.Empty(t, recorder.schemaMutations())
 
 	// The lock anchor seeded during migration must exist exactly once.
 	var lockCount int64
 	require.NoError(t, db.Model(&dm8TransactionLock{}).Where(dm8EmailLockPredicate, dm8EmailLockName).Count(&lockCount).Error)
 	assert.EqualValues(t, 1, lockCount, "email lock anchor must be seeded once")
 
-	// The options primary-key detection used by migrateOptionPrimaryKey must
-	// recognize the key as unique/primary on DM8 (the driver reports it via the
-	// primary-key flag; optionsKeyIsUnique accepts either).
 	unique, err := optionsKeyIsUnique(db)
 	require.NoError(t, err)
 	assert.True(t, unique, "options.key must be detected as a unique/primary key on DM8")
