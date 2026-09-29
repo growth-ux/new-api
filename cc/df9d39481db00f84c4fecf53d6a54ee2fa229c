@@ -1,0 +1,28 @@
+model/dm8.go
+  s_e7dc5699b4b895::t_9de8d17dda17dc 16-21,124
+model/dm8_error_test.go
+  s_e7dc5699b4b895::t_df53d609611bfa 1-18
+model/dm8_create.go
+  s_e7dc5699b4b895::t_9de8d17dda17dc 20,24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ccdf9d39481db00f84c4fecf53d6a54ee2fa229c",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_e7dc5699b4b895": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ebd4-31a5-7973-975c-e633dae48e0e",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
