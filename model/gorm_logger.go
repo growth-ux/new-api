@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	defaultSlowThresholdMs = 200
+	defaultSlowThresholdMs = 1000
 	maxSlowThresholdMs     = 60 * 60 * 1000
 )
 
