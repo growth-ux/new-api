@@ -1,14 +1,203 @@
 package model
 
 import (
+	"errors"
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+func requiredDM8TestEnv(t *testing.T, name string) string {
+	t.Helper()
+	value := os.Getenv(name)
+	if value == "" {
+		if os.Getenv("TEST_DATABASE_MATRIX") == "1" {
+			t.Fatal(name + " is required when TEST_DATABASE_MATRIX=1")
+		}
+		t.Skip(name + " is not configured")
+	}
+	return value
+}
+
+func grantDM8RuntimeTestTables(t *testing.T, owner *gorm.DB, runtimeUser string) {
+	t.Helper()
+	require.True(t, strings.HasPrefix(runtimeUser, "NEWAPI_TEST_"))
+	var schema string
+	require.NoError(t, owner.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&schema).Error)
+	require.True(t, strings.HasPrefix(schema, "NEWAPI_TEST_"))
+	var tables []string
+	require.NoError(t, owner.Raw("SELECT TABLE_NAME FROM USER_TABLES").Scan(&tables).Error)
+	require.NotEmpty(t, tables)
+	for _, table := range tables {
+		statement := fmt.Sprintf("GRANT SELECT, INSERT, UPDATE, DELETE ON %s.%s TO %s", dm8QuoteIdent(schema), dm8QuoteIdent(table), dm8QuoteIdent(runtimeUser))
+		require.NoError(t, owner.Exec(statement).Error)
+	}
+}
+
+func TestDM8StartupWithRuntimeAccount(t *testing.T) {
+	runtimeDSN := requiredDM8TestEnv(t, "TEST_DM_RUNTIME_DSN")
+	runtimeLogDSN := requiredDM8TestEnv(t, "TEST_DM_RUNTIME_LOG_DSN")
+	logOwnerDSN := requiredDM8TestEnv(t, "TEST_LOG_DM_DSN")
+	parsed, err := url.Parse(runtimeDSN)
+	require.NoError(t, err)
+	runtimeUser := parsed.User.Username()
+	owner := openDM8TestDB(t)
+	resetDM8Schema(t, owner)
+	grantDM8RuntimeTestTables(t, owner, runtimeUser)
+	logOwner, err := openDM8(logOwnerDSN)
+	require.NoError(t, err)
+	logOwnerPool, err := logOwner.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = logOwnerPool.Close() })
+	var logSchema string
+	require.NoError(t, logOwner.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&logSchema).Error)
+	require.Equal(t, requiredDM8TestEnv(t, "TEST_LOG_DM_SCHEMA"), logSchema)
+	dropAllDM8Tables(t, logOwner)
+	applyDM8InitSQL(t, logOwner, "log")
+	grantDM8RuntimeTestTables(t, logOwner, runtimeUser)
+
+	probe, err := openDM8(runtimeDSN)
+	require.NoError(t, err)
+	probePool, err := probe.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = probePool.Close() })
+	var count int64
+	var systemPrivileges []string
+	require.NoError(t, probe.Raw("SELECT PRIVILEGE FROM SESSION_PRIVS").Scan(&systemPrivileges).Error)
+	require.NotContains(t, systemPrivileges, "SELECT ANY DICTIONARY")
+	probeTable := `"newapi_runtime_privilege_probe"`
+	createErr := probe.Exec("CREATE TABLE " + probeTable + ` ("id" BIGINT)`).Error
+	if createErr == nil {
+		_ = probe.Exec("DROP TABLE " + probeTable).Error
+		t.Fatal("runtime identity unexpectedly has CREATE TABLE privilege")
+	}
+	user := User{Username: "dm8-runtime-crud", Password: "unused", AffCode: "dm8-runtime-crud", Email: "dm8-runtime-crud@example.test"}
+	require.NoError(t, probe.Create(&user).Error)
+	t.Cleanup(func() { _ = probe.Unscoped().Delete(&user).Error })
+	var stored User
+	require.NoError(t, probe.First(&stored, user.Id).Error)
+	require.NoError(t, probe.Model(&stored).Update("remark", "runtime-write-ok").Error)
+
+	for _, tc := range []struct {
+		name, mainDSN, logDSN string
+		master                bool
+	}{
+		{"dm_shared_master", runtimeDSN, "", true},
+		{"dm_shared_slave", runtimeDSN, "", false},
+		{"dm_separate_dm_log", runtimeDSN, runtimeLogDSN, true},
+		{"dm_sqlite_log", runtimeDSN, "local", true},
+		{"sqlite_dm_log", "local", runtimeLogDSN, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			oldDB, oldLog := DB, LOG_DB
+			oldMainType, oldLogType := common.MainDatabaseType(), common.LogDatabaseType()
+			oldMaster, oldSQLitePath := common.IsMasterNode, common.SQLitePath
+			t.Cleanup(func() {
+				if LOG_DB != nil && LOG_DB != DB && LOG_DB != oldLog {
+					if pool, err := LOG_DB.DB(); err == nil {
+						_ = pool.Close()
+					}
+				}
+				if DB != nil && DB != oldDB {
+					if pool, err := DB.DB(); err == nil {
+						_ = pool.Close()
+					}
+				}
+				DB, LOG_DB = oldDB, oldLog
+				common.SetDatabaseTypes(oldMainType, oldLogType)
+				common.IsMasterNode, common.SQLitePath = oldMaster, oldSQLitePath
+				initCol()
+			})
+			t.Setenv("SQL_DSN", tc.mainDSN)
+			t.Setenv("LOG_SQL_DSN", tc.logDSN)
+			common.SQLitePath = filepath.Join(t.TempDir(), "mixed.db")
+			common.IsMasterNode = tc.master
+			require.NoError(t, InitDB())
+			require.NoError(t, InitLogDB())
+			if tc.logDSN == runtimeLogDSN {
+				require.NoError(t, LOG_DB.Raw(`SELECT COUNT(*) FROM "audit_logs"`).Scan(&count).Error)
+			}
+		})
+	}
+}
+
+func TestDM8EmptySchemaDoesNotRepair(t *testing.T) {
+	emptyDSN := requiredDM8TestEnv(t, "TEST_DM_EMPTY_DSN")
+	db, err := openDM8(emptyDSN)
+	require.NoError(t, err)
+	pool, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pool.Close() })
+	var schema string
+	require.NoError(t, db.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&schema).Error)
+	require.True(t, strings.HasPrefix(schema, "NEWAPI_TEST_"))
+	var count int64
+	require.NoError(t, db.Raw("SELECT COUNT(*) FROM USER_TABLES").Scan(&count).Error)
+	require.Zero(t, count)
+	previousDB, previousLog := DB, LOG_DB
+	previousMain, previousLogType := common.MainDatabaseType(), common.LogDatabaseType()
+	DB, LOG_DB = db, db
+	common.SetDatabaseTypes(common.DatabaseTypeDM, common.DatabaseTypeDM)
+	t.Cleanup(func() {
+		DB, LOG_DB = previousDB, previousLog
+		common.SetDatabaseTypes(previousMain, previousLogType)
+	})
+	require.Error(t, migrateDB(), "empty DM schema must not be repaired at startup")
+	require.NoError(t, migrateLOGDB())
+	require.NoError(t, MigrateAuditLogs())
+	require.NoError(t, db.Raw("SELECT COUNT(*) FROM USER_TABLES").Scan(&count).Error)
+	require.Zero(t, count)
+}
+
+func TestDM8EmailUniquenessWithInitSQL(t *testing.T) {
+	db := openDM8TestDB(t)
+	resetDM8Schema(t, db)
+	saveDM8Globals(t, db)
+	name := fmt.Sprintf("dm8-email-%d", time.Now().UnixNano())
+	email := name + "@example.test"
+	users := []*User{
+		{Username: name + "a", Password: "password-123", Email: strings.ToUpper(email)},
+		{Username: name + "b", Password: "password-123", Email: email},
+	}
+	start := make(chan struct{})
+	results := make([]error, 2)
+	var group sync.WaitGroup
+	for i := range users {
+		group.Add(1)
+		go func(index int) {
+			defer group.Done()
+			<-start
+			results[index] = users[index].Insert(0)
+		}(i)
+	}
+	close(start)
+	group.Wait()
+	success, occupied := 0, 0
+	for _, err := range results {
+		if err == nil {
+			success++
+		} else if errors.Is(err, ErrEmailAlreadyTaken) {
+			occupied++
+		} else {
+			t.Fatalf("unexpected concurrent email result: %v", err)
+		}
+	}
+	require.Equal(t, 1, success)
+	require.Equal(t, 1, occupied)
+	var count int64
+	require.NoError(t, db.Model(&User{}).Where(`"email" = ?`, email).Count(&count).Error)
+	require.EqualValues(t, 1, count)
+}
 
 func TestDM8StartupSkipsSchemaWork(t *testing.T) {
 	db := openDM8TestDB(t)

@@ -27,8 +27,8 @@ func dm8DatabaseTimestamp(db *gorm.DB) (int64, error) {
 }
 
 // dm8TransactionLock is a single-row anchor used to serialize operations that DM8
-// cannot guard with an advisory lock. The row is created at migration time and
-// locked inside the caller's transaction with SELECT ... FOR UPDATE.
+// cannot guard with an advisory lock. init.sql creates the row; business operations
+// lock it inside the caller's transaction with SELECT ... FOR UPDATE.
 type dm8TransactionLock struct {
 	Name string `gorm:"column:name;primaryKey;size:64"`
 }
@@ -43,34 +43,6 @@ const dm8EmailLockName = "normalized_email"
 // GORM creates the lock column as the quoted lowercase "name". On a
 // CASE_SENSITIVE=1 instance, an unquoted name resolves to NAME instead.
 const dm8EmailLockPredicate = `"name" = ?`
-
-// ensureDM8TransactionLocks creates the lock table and seeds the email anchor. It
-// is idempotent: a concurrent seed that hits the primary-key uniqueness is
-// treated as success, and the anchor is verified to exist before returning.
-func ensureDM8TransactionLocks(db *gorm.DB) error {
-	if err := db.AutoMigrate(&dm8TransactionLock{}); err != nil {
-		return fmt.Errorf("dm8 ensure lock table: %w", err)
-	}
-	var existing int64
-	if err := db.Model(&dm8TransactionLock{}).Where(dm8EmailLockPredicate, dm8EmailLockName).Count(&existing).Error; err != nil {
-		return fmt.Errorf("dm8 inspect email lock anchor: %w", err)
-	}
-	if existing == 0 {
-		// A concurrent seeder may win the race; the primary-key uniqueness makes a
-		// duplicate insert an expected, ignorable outcome.
-		if err := db.Create(&dm8TransactionLock{Name: dm8EmailLockName}).Error; err != nil && !isDM8UniqueViolation(err) {
-			return fmt.Errorf("dm8 seed email lock anchor: %w", err)
-		}
-	}
-	var count int64
-	if err := db.Model(&dm8TransactionLock{}).Where(dm8EmailLockPredicate, dm8EmailLockName).Count(&count).Error; err != nil {
-		return fmt.Errorf("dm8 verify email lock anchor: %w", err)
-	}
-	if count != 1 {
-		return fmt.Errorf("dm8 email lock anchor missing after seeding (count=%d)", count)
-	}
-	return nil
-}
 
 // lockDM8NormalizedEmail takes the shared email-write lock inside tx. The anchor
 // row must already exist; a missing row surfaces as ErrRecordNotFound so callers

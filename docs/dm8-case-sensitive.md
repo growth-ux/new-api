@@ -10,15 +10,11 @@
 SELECT CASE_SENSITIVE();
 ```
 
-返回值必须是 `1`。使用专用测试用户和以 `NEWAPI_TEST_` 开头的 schema。连接用户需要创建/修改业务表的权限，还需要读取 DM8 元数据。当前 `gorm-dameng` 迁移器直接查询 `SYS.SYSOBJECTS` 等系统对象；本地验证用户使用了：
+返回值必须是 `1`。使用专用测试用户和以 `NEWAPI_TEST_` 开头的 schema。达梦空库先由部署账号执行 [init.sql](../database/dm8/init.sql)，应用运行账号再连接该 schema；建表、建索引和锁记录的准备工作由这一个文件完成。
 
-```sql
-GRANT RESOURCE TO NEWAPI_TEST_CASE1;
-GRANT CREATE SESSION TO NEWAPI_TEST_CASE1;
-GRANT SELECT ANY DICTIONARY TO NEWAPI_TEST_CASE1;
-```
+部署账号需要创建表和索引的权限。应用运行账号按正常业务读写授予对象权限，不需要为启动迁移授予 `SELECT ANY DICTIONARY` 或建改表权限。驱动探针等明确要创建临时表的测试仍使用有相应权限的独立测试账号。本地旧测试账号 `NEWAPI_TEST_CASE1` 曾用于自动迁移验证，因此本次另建低权限账号做运行验证。
 
-生产环境可由 DBA 根据驱动实际访问的系统对象授予等效的最小权限。应用连接时会预检 `SYS.SYSOBJECTS`，缺少访问权限会返回明确错误，避免迁移器把元数据查询失败误判为表不存在。
+连接仍会检查 Ping 和当前 schema，启动不再预检 `SYS.SYSOBJECTS`。本地低权限验证确认运行账号没有 `SELECT ANY DICTIONARY`，无法创建表，仍可在预建表上完成启动和必要的业务读写。
 
 ## 回归验证
 
@@ -70,4 +66,4 @@ TEST_DM_SCHEMA=NEWAPI_TEST_CASE1 \
 go test ./model -run '^TestDM8' -count=1
 ```
 
-启动验证可在相同独立 schema 上设置 `SQL_DSN` 后运行 `go run .`，检查迁移、定时任务和启动日志。现有 `TestDM8StartupMigration` 会清空测试 schema 的表，再执行首次迁移和重复迁移。
+启动验证先执行 `init.sql`，再以运行账号设置 `SQL_DSN` 启动应用。`TestDM8StartupWithInitSQL` 会在隔离测试 schema 中重新执行该 SQL，连续进行两次启动数据初始化并确认没有结构变更。

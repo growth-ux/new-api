@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,10 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+func dm8QuoteIdent(name string) string {
+	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
+}
 
 // dm8TestDSN returns the isolated DM8 test DSN, or "" when the matrix is not
 // configured. TEST_DATABASE_MATRIX=1 turns a missing DSN into a hard failure so

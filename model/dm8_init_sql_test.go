@@ -126,3 +126,34 @@ func TestDM8InitSQLLogSection(t *testing.T) {
 	require.False(t, db.Migrator().HasTable(&User{}))
 	require.False(t, db.Migrator().HasTable(&dm8TransactionLock{}))
 }
+
+func TestDM8InitSQLIndependentLog(t *testing.T) {
+	dsn := os.Getenv("TEST_LOG_DM_DSN")
+	if dsn == "" {
+		if os.Getenv("TEST_DATABASE_MATRIX") == "1" {
+			t.Fatal("TEST_LOG_DM_DSN is required when TEST_DATABASE_MATRIX=1")
+		}
+		t.Skip("TEST_LOG_DM_DSN not configured")
+	}
+	db, err := openDM8(dsn)
+	require.NoError(t, err)
+	pool, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pool.Close() })
+	var schema string
+	require.NoError(t, db.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&schema).Error)
+	expected := os.Getenv("TEST_LOG_DM_SCHEMA")
+	require.NotEmpty(t, expected, "TEST_LOG_DM_SCHEMA is required for independent log test")
+	require.Equal(t, expected, schema)
+	require.True(t, strings.HasPrefix(schema, "NEWAPI_TEST_"))
+	var caseSensitive int
+	require.NoError(t, db.Raw("SELECT CASE_SENSITIVE()").Scan(&caseSensitive).Error)
+	require.Equal(t, 1, caseSensitive)
+	dropAllDM8Tables(t, db)
+	applyDM8InitSQL(t, db, "log")
+	var count int64
+	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM "logs"`).Scan(&count).Error)
+	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM "audit_logs"`).Scan(&count).Error)
+	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM USER_TABLES WHERE TABLE_NAME = 'users'`).Scan(&count).Error)
+	require.Zero(t, count)
+}
