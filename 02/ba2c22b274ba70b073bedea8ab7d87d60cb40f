@@ -1,0 +1,24 @@
+aliyun_env/Dockerfile
+  s_a66ed84f80190d::t_6bb298fc602a42 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "02ba2c22b274ba70b073bedea8ab7d87d60cb40f",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_a66ed84f80190d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f116-e9aa-78f0-a026-785037ea939b",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
