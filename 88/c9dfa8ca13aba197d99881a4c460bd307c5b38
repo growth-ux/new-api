@@ -1,0 +1,39 @@
+aliyun_env/Dockerfile.deps
+  h_f75b2dd43abf29 1-3,5-17
+  s_0fae4bf017ca7c::t_811dee374758a1 4
+xc_env/stg.yaml
+  h_f75b2dd43abf29 4,7,12,16,22-23,29,34,37,46
+aliyun_env/stg.yaml
+  h_f75b2dd43abf29 1-45
+xc_env/Dockerfile
+  h_f75b2dd43abf29 1-16
+aliyun_env/Dockerfile
+  h_f75b2dd43abf29 1-18
+aliyun_env/jenkins-deploy.sh
+  h_f75b2dd43abf29 1-40
+xc_env/Dockerfile.bak
+  h_f75b2dd43abf29 1
+xc_env/jenkins-deploy.sh
+  h_f75b2dd43abf29 10,15,17,21-22,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "88c9dfa8ca13aba197d99881a4c460bd307c5b38",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_0fae4bf017ca7c": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790733854233",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
