@@ -1,0 +1,25 @@
+aliyun_env/stg.yaml
+  s_0fae4bf017ca7c::t_54c541499656e0 19
+  s_0fae4bf017ca7c::t_d631e3327e1c90 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6d6f168098664bb55585bd37346ec4a2f05d6f78",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_0fae4bf017ca7c": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790733854233",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
