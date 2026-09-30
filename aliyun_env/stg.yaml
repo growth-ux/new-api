@@ -15,8 +15,8 @@ spec:
       labels:
         app: ldw-new-api
     spec:
-      # 集群节点已配置 stgharbor 拉取凭证，无需在此声明 imagePullSecrets。
-      # 若后续出现 ImagePullBackOff，再补 docker-registry 类型的 secret 并在此引用。
+      imagePullSecrets:
+        - name: stgadmin
       containers:
         - name: ldw-new-api
           # 占位镜像，实际 tag 由 jenkins 里的 sed / set image 替换后生效
