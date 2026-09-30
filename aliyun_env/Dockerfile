@@ -13,6 +13,7 @@ RUN go build -mod=readonly -ldflags "-s -w" -o new-api
 
 
 FROM stgharbor.liangdawang.com:1180/library/alpine:3.20
+RUN apk add --no-cache bash
 COPY --from=builder2 /build/new-api /
 EXPOSE 3000
 WORKDIR /data
