@@ -1,4 +1,6 @@
-FROM oven/bun:1.4.0 AS web-deps
+# Use musl to avoid the newer glibc thread-creation path on legacy Docker hosts.
+# Reinstall dependencies here so native packages match musl (not glibc).
+FROM oven/bun:1.4.0-alpine AS web-deps
 
 WORKDIR /build/web
 COPY web/package.json web/bun.lock ./
