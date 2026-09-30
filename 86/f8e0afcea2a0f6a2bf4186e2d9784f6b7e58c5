@@ -1,0 +1,31 @@
+DockerfileAliyun
+  h_f75b2dd43abf29 19
+  s_0fae4bf017ca7c::t_c36f026bbbb9ee 9
+  s_0fae4bf017ca7c::t_a575ffed13142b 4
+  s_0fae4bf017ca7c::t_d923f70da3bcfe 1-3
+  s_0fae4bf017ca7c::t_fe788083644119 5-8
+  h_f75b2dd43abf29 10-18,20-23
+DockerfileAliyunDeps
+  h_f75b2dd43abf29 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "86f8e0afcea2a0f6a2bf4186e2d9784f6b7e58c5",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_0fae4bf017ca7c": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790733854233",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
