@@ -10,9 +10,7 @@ COPY . .
 COPY --from=builder /build/web/dist ./web/dist
 RUN go build -mod=readonly -ldflags "-s -w" -o new-api
 
-# 运行时用 alpine（约 7MB），容器内自带 shell，方便 exec 进去排查问题。
-# 离线环境需要先在内部仓库导入一次 alpine 的 amd64 镜像（替换 <内部仓库> 占位符）。
-# alpine 自带 CA 证书和时区数据，无需再从 builder2 复制。
+
 FROM stgharbor.liangdawang.com:1180/library/alpine:3.20
 COPY --from=builder2 /build/new-api /
 EXPOSE 3000

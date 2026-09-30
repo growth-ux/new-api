@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldw-new-api
+  template:
+    metadata:
+      labels:
+        app: ldw-new-api
+    spec:
+      # 集群节点已配置 stgharbor 拉取凭证，无需在此声明 imagePullSecrets。
+      # 若后续出现 ImagePullBackOff，再补 docker-registry 类型的 secret 并在此引用。
+      containers:
+        - name: ldw-new-api
+          # 占位镜像，实际 tag 由 jenkins 里的 sed / set image 替换后生效
+          image: stgharbor.liangdawang.com:1180/stg/ldw-new-api:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: ldw-new-api-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 32767
+  selector:
+    app: ldw-new-api

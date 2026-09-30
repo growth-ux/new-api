@@ -1,11 +1,7 @@
-# 在一台可联网的机器上构建，产出离线环境所需的 amd64 依赖镜像：
-#   docker build -f DockerfileAliyunDeps --target web-deps -t <内部仓库>/new-api-web-deps-amd64:v1 .
-#   docker build -f DockerfileAliyunDeps --target go-deps  -t <内部仓库>/new-api-go-deps-amd64:v1 .
-# 然后 push 到离线环境可访问的内部镜像仓库，供 DockerfileAliyun 使用。
 FROM oven/bun:1.4.0 AS web-deps
 
 WORKDIR /build/web
-COPY web/package.json web/bun.lock ./
+COPY web/package.json web/bun.lock web/.npmrc ./
 RUN bun install --frozen-lockfile --network-concurrency=16
 
 

@@ -1,47 +1,40 @@
-# new-api STG 环境 K8s 清单（部署模式参考 ldw-api-gateway/stg.yaml）
-#
-# 【接 DM8 数据库】部署前需一次性创建配置 Secret（密码不进仓库，自己在集群执行）：
-#   kubectl create secret generic new-api-stg-secret -n server \
-#     --from-literal=SQL_DSN='dm://<用户>:<密码>@<DM8内网地址>:5236?schema=<SCHEMA>' \
-#     --from-literal=SESSION_SECRET='<一串随机值>'
-# 创建后重新 apply 本文件，Pod 会重建并连 DM8。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: new-api-stg
+  name: ldw-new-api
   namespace: server
   labels:
-    app: new-api-stg
+    app: ldw-new-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: new-api-stg
+      app: ldw-new-api
   template:
     metadata:
       labels:
-        app: new-api-stg
+        app: ldw-new-api
     spec:
       # 复用集群已有的 swr.cofco 拉取凭证（与 ldw-base-oss 同一个私有仓库），无需自己创建
       imagePullSecrets:
         - name: dockerimage-lzd
       containers:
-        - name: new-api-stg
-          # 占位镜像，实际 tag 由 jenkins-deploy-stg.sh 里的 sed 替换后 apply
+        - name: ldw-new-api
+          # 占位镜像，实际 tag 由 xc_env/jenkins-deploy.sh 里的 sed 替换后 apply
           image: swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/stg/ldw-new-api:latest
           ports:
             - containerPort: 3000
           envFrom:
             - secretRef:
-                name: new-api-stg-secret
+                name: ldw-new-api-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: new-api-stg
+  name: ldw-new-api
   namespace: server
   labels:
-    app: new-api-stg
+    app: ldw-new-api
 spec:
   type: NodePort
   ports:
@@ -50,4 +43,4 @@ spec:
       targetPort: 3000
       nodePort: 32767   # 若与已有服务冲突，改成其它空闲端口（gateway stg 用 33002）
   selector:
-    app: new-api-stg
+    app: ldw-new-api

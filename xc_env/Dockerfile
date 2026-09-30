@@ -1,4 +1,3 @@
-# 使用 --platform=linux/arm64 构建，运行环境为 Kylin Server V10。
 FROM swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/new-api-web-deps:v1 AS builder
 WORKDIR /build/web
 COPY ./web ./
