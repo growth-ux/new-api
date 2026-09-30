@@ -1,6 +1,3 @@
-# 离线环境（linux/amd64）构建，模式与 DockerfileStg 相同：
-# 依赖全部来自内部仓库预打包的 deps 镜像（用 DockerfileAliyunDeps 制作），构建过程无需联网。
-# 注意：仓库地址需替换为离线环境可访问的内部镜像仓库。
 FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:v1 AS builder
 WORKDIR /build/web
 COPY ./web ./
