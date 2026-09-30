@@ -1,9 +1,9 @@
-FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:v1 AS builder
+FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:amd AS builder
 WORKDIR /build/web
 COPY ./web ./
 RUN bun --bun run build
 
-FROM stgharbor.liangdawang.com:1180/library/new-api-go-deps:v1 AS builder2
+FROM stgharbor.liangdawang.com:1180/library/new-api-go-deps:amd AS builder2
 ENV GOPROXY=off
 WORKDIR /build
 COPY . .
