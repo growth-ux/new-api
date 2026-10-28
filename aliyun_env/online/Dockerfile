@@ -21,7 +21,9 @@ RUN go build -mod=readonly -ldflags "-s -w" -o /new-api
 
 
 FROM docker.m.daocloud.io/library/alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata
+# apk 走阿里云源（Alpine 官方 CDN dl-cdn.alpinelinux.org 在构建机上不通/不稳）
+RUN sed -i 's#https://dl-cdn.alpinelinux.org#https://mirrors.aliyun.com#g' /etc/apk/repositories \
+    && apk add --no-cache ca-certificates tzdata
 COPY --from=go-builder /new-api /new-api
 WORKDIR /data
 EXPOSE 3000
