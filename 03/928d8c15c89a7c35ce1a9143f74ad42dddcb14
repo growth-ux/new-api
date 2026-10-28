@@ -1,0 +1,14 @@
+xc_env/prod.yaml
+  h_f75b2dd43abf29 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03928d8c15c89a7c35ce1a9143f74ad42dddcb14",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
