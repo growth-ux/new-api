@@ -1,0 +1,57 @@
+aliyun_env/Dockerfile
+  h_f75b2dd43abf29 1
+aliyun_env/online/Dockerfile
+  s_50cf342ca94920::t_7ccebb902de738 1-17,19-24
+  h_f75b2dd43abf29 18
+aliyun_env/prod.yaml
+  s_9a3ef5670a981b::t_7f87765ed98b74 6
+  s_9a3ef5670a981b::t_47919d2f2218b0 20
+  s_9a3ef5670a981b::t_bc780be8d7c302 24
+  h_f75b2dd43abf29 1
+  s_50cf342ca94920::t_41d9c3077633a9 23,26,35,39,43-44
+  s_9a3ef5670a981b::t_0a78f5d3798486 29
+  s_50cf342ca94920::t_94cea584f75ffe 2-5,7-19,21-22,25,27-28,30-34,36-38,40-42,45-46
+aliyun_env/online/prod.yaml
+  s_9a3ef5670a981b::t_a0b77d227fec16 19
+  s_9a3ef5670a981b::t_915d581ceffd27 23
+  s_9a3ef5670a981b::t_4d2b87181c7b4e 35
+  s_9a3ef5670a981b::t_3636a3b71399ee 29
+  h_f75b2dd43abf29 5,22,24
+  s_50cf342ca94920::t_7ccebb902de738 1-4,6-18,20-21,25-28,30-34,36-46
+aliyun_env/online/jenkins-deploy.sh
+  s_50cf342ca94920::t_e1987058f2ca88 66
+  s_50cf342ca94920::t_7ccebb902de738 1-65
+.gitignore
+  h_f75b2dd43abf29 47
+aliyun_env/online/stg.yaml
+  s_50cf342ca94920::t_7ccebb902de738 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33ace699ffd7cc88bb3089b7f0eb607d6bb40a61",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_50cf342ca94920": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17c2a-16fc-7780-95ae-d2d0e583b7b4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    },
+    "s_9a3ef5670a981b": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1793000118608",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
