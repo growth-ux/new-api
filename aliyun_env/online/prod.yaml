@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldw-new-api
+  template:
+    metadata:
+      labels:
+        app: ldw-new-api
+    spec:
+      imagePullSecrets:
+        - name: harborsecret
+      containers:
+        - name: ldw-new-api
+
+          # 填写生产镜像仓库，发布时由同目录脚本替换 tag。uat-harbor.liangdawang.com
+          image: uat-harbor.liangdawang.com/prod/ldw-new-api:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: ldw-new-api-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 32767  # 按生产集群实际情况填写。
+  selector:
+    app: ldw-new-api

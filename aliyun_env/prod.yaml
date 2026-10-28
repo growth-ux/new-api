@@ -1,0 +1,46 @@
+# 废弃 ---- 没法推送镜像到uat harbor
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldw-new-api
+  template:
+    metadata:
+      labels:
+        app: ldw-new-api
+    spec:
+      imagePullSecrets:
+        - name: harborsecret
+      containers:
+        - name: ldw-new-api
+          # 填写生产镜像地址，发布时由 Jenkins 替换为实际 tag
+          image: uat-harbor.liangdawang.com/prod/ldw-mall-mer:1.0.1.411
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: ldw-new-api-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldw-new-api
+  namespace: replace-with-prod-namespace
+  labels:
+    app: ldw-new-api
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 32767  # 待填写生产端口；同集群内不能与已有 NodePort 重复
+  selector:
+    app: ldw-new-api

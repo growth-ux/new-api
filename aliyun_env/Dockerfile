@@ -1,5 +1,4 @@
-# Build/push the web-deps target in Dockerfile.deps with this tag first.
-FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:amd-musl AS builder
+FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:amd AS builder
 WORKDIR /build/web
 COPY ./web ./
 RUN bun --bun run build
@@ -13,8 +12,6 @@ RUN go build -mod=readonly -ldflags "-s -w" -o new-api
 
 
 FROM stgharbor.liangdawang.com:1180/library/alpine:3.20
-RUN apk add --no-cache bash
 COPY --from=builder2 /build/new-api /
-EXPOSE 3000
 WORKDIR /data
 ENTRYPOINT ["/new-api"]
