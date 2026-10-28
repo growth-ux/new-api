@@ -1,4 +1,4 @@
-FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:amd AS builder
+FROM stgharbor.liangdawang.com:1180/library/new-api-web-deps:amd-musl AS builder
 WORKDIR /build/web
 COPY ./web ./
 RUN bun --bun run build
