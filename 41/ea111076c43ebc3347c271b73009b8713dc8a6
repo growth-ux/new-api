@@ -1,0 +1,28 @@
+aliyun_env/online/prod.yaml
+  h_f75b2dd43abf29 44
+aliyun_env/Dockerfile
+  s_9a3ef5670a981b::t_cb77f655d9f702 15
+aliyun_env/online/Dockerfile
+  h_f75b2dd43abf29 1-3,10,12-13,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41ea111076c43ebc3347c271b73009b8713dc8a6",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_9a3ef5670a981b": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1793000118608",
+        "model": "unknown"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
