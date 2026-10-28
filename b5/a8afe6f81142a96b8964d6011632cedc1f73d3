@@ -1,0 +1,14 @@
+aliyun_env/online/Dockerfile
+  h_f75b2dd43abf29 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5a8afe6f81142a96b8964d6011632cedc1f73d3",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
