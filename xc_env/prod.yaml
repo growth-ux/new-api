@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldw-new-api
+  template:
+    metadata:
+      labels:
+        app: ldw-new-api
+    spec:
+      # 复用集群已有的 swr.cofco 拉取凭证（与 ldw-base-oss 同一个私有仓库），无需自己创建
+      imagePullSecrets:
+        - name: dockerimage-lzd
+      containers:
+        - name: ldw-new-api
+          # 占位镜像，实际 tag 由 xc_env/jenkins-deploy.sh 里的 sed 替换后 apply
+          image: swr.cofco-cn-beijing-1.cofco.com/liangdawang-test-liangdawang/stg/ldw-new-api:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: ldw-new-api-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ldw-new-api
+  namespace: server
+  labels:
+    app: ldw-new-api
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: 32767   # 若与已有服务冲突，改成其它空闲端口（gateway stg 用 33002）
+  selector:
+    app: ldw-new-api
