@@ -41,6 +41,6 @@ spec:
     - name: http
       port: 3000
       targetPort: 3000
-      nodePort: 32767  # 按生产集群实际情况填写。
+      nodePort: 32767
   selector:
     app: ldw-new-api
