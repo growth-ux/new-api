@@ -1,0 +1,14 @@
+common/init.go
+  h_f75b2dd43abf29 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8cd551868d45c5004696a00a0fb106d1e46a067",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
