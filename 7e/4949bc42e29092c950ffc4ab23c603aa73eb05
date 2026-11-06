@@ -1,0 +1,107 @@
+web/src/hooks/use-top-nav-links.ts
+  s_04da2557d212cf::t_1114ef3e8158c8 59,91-95
+web/src/features/dashboard/components/overview/uptime-panel.tsx
+  s_04da2557d212cf::t_1114ef3e8158c8 107
+web/src/i18n/locales/zh-TW.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+web/public/brand-logo.svg
+  s_04da2557d212cf::t_d0c141f8a0b9ef 1-4
+web/src/features/system-settings/site/index.tsx
+  s_04da2557d212cf::t_1114ef3e8158c8 19-20,31
+setting/operation_setting/general_setting.go
+  s_04da2557d212cf::t_d0c141f8a0b9ef 27
+web/src/features/about/__tests__/content.test.tsx
+  s_04da2557d212cf::t_7c2aa58bdd7fe5 20-25,39-44,49-54,56-57,61-65,69-78,82-86,93-99,101-107,109-118
+  s_04da2557d212cf::t_6d313f067b58e8 81,100,108
+  s_04da2557d212cf::t_e620a6617145d4 45-48,55
+  s_04da2557d212cf::t_94ef1b64dbcb54 87-92
+  s_04da2557d212cf::t_3f70259f1ed9b5 1-19,27-38,58-60,66-68,79-80,119
+  s_04da2557d212cf::t_bd5a90a0ae89ae 26
+web/src/features/about/index.tsx
+  s_04da2557d212cf::t_94ef1b64dbcb54 86
+  s_04da2557d212cf::t_aea1ec5ba1337f 20,25,27,33,35,38-40,44-46,56,58,60-65,67-74,76-78,80-81
+  s_04da2557d212cf::t_7c2aa58bdd7fe5 41-43
+web/src/i18n/locales/vi.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+web/src/features/home/constants.ts
+  s_04da2557d212cf::t_bd5a90a0ae89ae 23
+web/src/components/layout/components/footer.tsx
+  s_04da2557d212cf::t_bd5a90a0ae89ae 200-201,206-207
+  s_04da2557d212cf::t_a9c22cd6ee77a0 73-74,104,167,218
+  s_04da2557d212cf::t_aab37fba12e8b4 96-101
+  s_04da2557d212cf::t_aea1ec5ba1337f 25,130-131,137,139-140,144-145,199
+common/constants.go
+  s_04da2557d212cf::t_d0c141f8a0b9ef 15
+web/src/i18n/locales/ja.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+web/src/i18n/locales/en.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+web/src/hooks/__tests__/sidebar-config.test.tsx
+  s_04da2557d212cf::t_3b32e3bb703087 76,78-82,84-87
+  s_04da2557d212cf::t_884f5bd2e0a760 77,83
+web/src/i18n/locales/ru.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+web/src/components/layout/components/system-brand.tsx
+  s_04da2557d212cf::t_d0c141f8a0b9ef 51,54
+web/src/i18n/locales/zh.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+web/src/components/layout/components/__tests__/footer.test.tsx
+  s_04da2557d212cf::t_aab37fba12e8b4 1-123
+controller/misc_uptime_test.go
+  s_04da2557d212cf::t_3f70259f1ed9b5 1-47
+web/src/features/home/components/sections/__tests__/hero.test.tsx
+  s_04da2557d212cf::t_14176e4aa2f065 1-82
+web/src/i18n/locales/fr.json
+  s_04da2557d212cf::t_674023cffc798b 1045,1071,1371,1439,1508,2910,3188,3968,4070,5306,5321,5357,5417,5940,6593
+controller/misc.go
+  s_04da2557d212cf::t_d0c141f8a0b9ef 106
+web/src/features/errors/general-error.tsx
+  s_04da2557d212cf::t_1114ef3e8158c8 69
+web/src/assets/logo.tsx
+  s_04da2557d212cf::t_bd5a90a0ae89ae 19
+  s_04da2557d212cf::t_1114ef3e8158c8 21,40
+web/src/lib/constants.ts
+  s_04da2557d212cf::t_d0c141f8a0b9ef 24-25
+web/index.html
+  s_04da2557d212cf::t_d0c141f8a0b9ef 9-10
+web/src/features/home/components/sections/hero.tsx
+  s_04da2557d212cf::t_7c2aa58bdd7fe5 36
+  s_04da2557d212cf::t_14176e4aa2f065 87
+web/src/features/system-settings/general/system-info-section.tsx
+  s_04da2557d212cf::t_1114ef3e8158c8 35,167
+  s_04da2557d212cf::t_7c2aa58bdd7fe5 245
+web/src/features/docs/index.tsx
+  s_04da2557d212cf::t_7c2aa58bdd7fe5 33-35,41-43,49-51,62-64,70-74,77-82,88-92,99-101
+  s_04da2557d212cf::t_aea1ec5ba1337f 1-32,36-40,44-48,52-61,65-69,75-76,83-87,93-98,102-108
+web/src/features/home/components/sections/features.tsx
+  s_04da2557d212cf::t_1114ef3e8158c8 214
+web/rsbuild.config.ts
+  s_04da2557d212cf::t_d0c141f8a0b9ef 67
+web/src/routes/docs/index.tsx
+  s_04da2557d212cf::t_aea1ec5ba1337f 1-25
+web/src/hooks/use-sidebar-data.ts
+  s_04da2557d212cf::t_affbf11f492353 61
+web/src/routeTree.gen.ts
+  s_04da2557d212cf::t_1d642e12b19209 32,176-180,451,514,581,647,710,776,834,983-989,1451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e4949bc42e29092c950ffc4ab23c603aa73eb05",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_04da2557d212cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1af83-16d2-7b93-8e60-496a692d994c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
