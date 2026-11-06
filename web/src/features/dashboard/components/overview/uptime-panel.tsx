@@ -104,7 +104,7 @@ export function UptimePanel() {
           {t('Uptime')}
         </span>
       }
-      description={t('Grouped monitor status from Uptime Kuma')}
+      description={t('Service availability monitoring')}
       loading={loading}
       empty={!groups.length}
       emptyMessage={t('No uptime monitoring configured')}

@@ -73,6 +73,18 @@ function sidebarFor(admin?: object, user?: object, canConfigure = true) {
   return result
 }
 
+describe('chat sidebar visibility', () => {
+  it('shows Chat at the existing playground route without third-party menus when legacy settings enable chat', () => {
+    const { result } = sidebarFor(
+      { chat: { enabled: true, playground: true, chat: true } },
+      { chat: { enabled: true, playground: true, chat: true } }
+    )
+    const group = result.current.find((item) => item.id === 'chat')
+    expect(group?.items.map((item) => item.title)).toEqual(['Chat'])
+    expect(group?.items[0].url).toBe('/playground')
+  })
+})
+
 describe('security sidebar visibility', () => {
   it('old configurations show Security & Access immediately after Profile and keep API Keys', () => {
     const { result } = sidebarFor(

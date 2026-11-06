@@ -103,7 +103,7 @@ func GetStatus(c *gin.Context) {
 
 		// 面板启用开关
 		"api_info_enabled":      cs.ApiInfoEnabled,
-		"uptime_kuma_enabled":   cs.UptimeKumaEnabled,
+		"uptime_kuma_enabled":   cs.UptimeKumaEnabled && len(console_setting.GetUptimeKumaGroups()) > 0,
 		"announcements_enabled": cs.AnnouncementsEnabled,
 		"faq_enabled":           cs.FAQEnabled,
 

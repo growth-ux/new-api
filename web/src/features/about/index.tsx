@@ -17,99 +17,33 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Construction } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { RichContent } from '@/components/rich-content'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSystemConfig } from '@/hooks/use-system-config'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { getAboutContent } from './api'
 
-function EmptyAboutState() {
+function PlatformIntroduction() {
   const { t } = useTranslation()
-  const currentYear = new Date().getFullYear()
+  const { systemName } = useSystemConfig()
 
   return (
-    <div className='flex min-h-[60vh] items-center justify-center p-8'>
-      <div className='max-w-2xl space-y-6 text-center'>
-        <div className='flex justify-center'>
-          <Construction className='text-muted-foreground h-24 w-24' />
-        </div>
-        <div className='space-y-2'>
-          <h2 className='text-2xl font-bold'>{t('No About Content Set')}</h2>
-          <p className='text-muted-foreground'>
-            {t(
-              'The administrator has not configured any about content yet. You can set it in the settings page, supporting HTML or URL.'
-            )}
-          </p>
-        </div>
-        <div className='space-y-4 text-sm'>
-          <p>
-            {t('New API Project Repository:')}{' '}
-            <a
-              href='https://github.com/QuantumNous/new-api'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('https://github.com/QuantumNous/new-api')}
-            </a>
-          </p>
-          <p className='text-muted-foreground'>
-            <a
-              href='https://github.com/QuantumNous/new-api'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('NewAPI')}
-            </a>{' '}
-            © {currentYear}{' '}
-            <a
-              href='https://github.com/QuantumNous'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('QuantumNous')}
-            </a>{' '}
-            {t('| Based on')}{' '}
-            <a
-              href='https://github.com/songquanpeng/one-api'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('One API')}
-            </a>{' '}
-            © 2023{' '}
-            <a
-              href='https://github.com/songquanpeng'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('JustSong')}
-            </a>
-          </p>
-          <p className='text-muted-foreground'>
-            {t('This project must be used in compliance with the')}{' '}
-            <a
-              href='https://github.com/QuantumNous/new-api/blob/main/LICENSE'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-primary hover:underline'
-            >
-              {t('AGPL v3.0 License')}
-            </a>
-            .
-          </p>
-        </div>
-      </div>
-    </div>
+    <section className='space-y-5 py-8'>
+      <h1 className='text-3xl font-semibold tracking-tight'>{systemName}</h1>
+      <p className='text-muted-foreground max-w-2xl leading-7'>
+        {t(
+          'One platform for model access, API keys, usage tracking, and team management.'
+        )}
+      </p>
+      <Button render={<Link to='/docs' />}>{t('Docs')}</Button>
+    </section>
   )
 }
 
@@ -119,68 +53,37 @@ export function About() {
     queryKey: ['about-content'],
     queryFn: async () => requireServerSuccess(await getAboutContent()),
   })
+  const content = data?.data?.trim() ?? ''
 
-  const rawContent = data?.data?.trim() ?? ''
-  const hasContent = rawContent.length > 0
-  const isUrl = hasContent && isHttpUrl(rawContent)
-  const contentIsHtml = hasContent && isLikelyHtml(rawContent)
-
+  let introduction = <PlatformIntroduction />
   if (isLoading) {
-    return (
-      <PublicLayout>
-        <div className='mx-auto flex max-w-4xl flex-col gap-4 py-12'>
-          <Skeleton className='h-8 w-[45%]' />
-          <Skeleton className='h-4 w-full' />
-          <Skeleton className='h-4 w-[90%]' />
-          <Skeleton className='h-4 w-[80%]' />
-        </div>
-      </PublicLayout>
+    introduction = (
+      <div className='space-y-4 py-8'>
+        <Skeleton className='h-8 w-[45%]' />
+        <Skeleton className='h-4 w-full' />
+        <Skeleton className='h-4 w-[80%]' />
+      </div>
     )
-  }
-
-  if (!hasContent) {
-    return (
-      <PublicLayout>
-        <EmptyAboutState />
-      </PublicLayout>
+  } else if (content && isHttpUrl(content)) {
+    introduction = (
+      <iframe
+        src={content}
+        className='h-[65vh] w-full border-0'
+        title={t('About')}
+        sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts'
+      />
     )
-  }
-
-  if (isUrl) {
-    return (
-      <PublicLayout showMainContainer={false}>
-        <iframe
-          src={rawContent}
-          className='h-[calc(100vh-3.5rem)] w-full border-0'
-          title={t('About')}
-          sandbox='allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts'
-        />
-      </PublicLayout>
+  } else if (content && isLikelyHtml(content)) {
+    introduction = (
+      <RichContent mode='html' htmlVariant='isolated' content={content} />
     )
-  }
-
-  if (contentIsHtml) {
-    return (
-      <PublicLayout showMainContainer={false}>
-        <RichContent
-          mode='html'
-          htmlVariant='isolated'
-          content={rawContent}
-          className='prose-neutral dark:prose-invert max-w-none'
-        />
-      </PublicLayout>
-    )
+  } else if (content) {
+    introduction = <RichContent mode='markdown' content={content} />
   }
 
   return (
     <PublicLayout>
-      <div className='mx-auto max-w-6xl px-4 py-8'>
-        <RichContent
-          mode='markdown'
-          content={rawContent}
-          className='prose-neutral dark:prose-invert max-w-none'
-        />
-      </div>
+      <div className='mx-auto max-w-4xl px-2 py-8 sm:px-4'>{introduction}</div>
     </PublicLayout>
   )
 }
