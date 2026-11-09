@@ -39,8 +39,8 @@ func getUserVerificationState(tx *gorm.DB, userID int, forUpdate bool) (*UserVer
 	if common.UsingMainDatabase(common.DatabaseTypeDM) {
 		existsProjection = "CASE WHEN EXISTS (?) THEN 1 ELSE 0 END AS %s"
 	}
-	selectSQL := fmt.Sprintf("%s AS %s, %s, %s, %s, CASE WHEN %s <> '' THEN 1 ELSE 0 END AS %s, ",
-		column("id"), column("user_id"), column("status"), column("role"), column("auth_version"), column("password"), column("has_password")) +
+	selectSQL := fmt.Sprintf("%s AS %s, %s, %s, %s, %s, ",
+		column("id"), column("user_id"), column("status"), column("role"), column("auth_version"), userHasPasswordProjection(tx)) +
 		fmt.Sprintf(existsProjection, column("has_two_fa")) + ", " +
 		fmt.Sprintf(existsProjection, column("two_fa_locked")) + ", " +
 		fmt.Sprintf(existsProjection, column("has_passkey"))

@@ -536,6 +536,11 @@ func GetUserById(id int, selectAll bool) (*User, error) {
 	return &user, err
 }
 
+func userHasPasswordProjection(db *gorm.DB) string {
+	// Oracle-compatible DM8 treats '' as NULL, so compare the hash length.
+	return "CASE WHEN LENGTH(" + quoteModelIdentifier(db, "password") + ") > 0 THEN 1 ELSE 0 END AS " + quoteModelIdentifier(db, "has_password")
+}
+
 // GetSelfUserById reads dashboard profile data and password existence in one
 // query. The password hash and management access token are never selected.
 func GetSelfUserById(id int) (*User, error) {
@@ -552,7 +557,7 @@ func GetSelfUserById(id int) (*User, error) {
 		"group", "quota", "used_quota", "request_count", "aff_code", "aff_count",
 		"aff_quota", "aff_history", "inviter_id", "linux_do_id", "setting",
 		"stripe_customer", "auth_version",
-		"CASE WHEN " + quoteModelIdentifier(DB, "password") + " <> '' THEN 1 ELSE 0 END AS " + quoteModelIdentifier(DB, "has_password"),
+		userHasPasswordProjection(DB),
 	}).Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).First(&profile).Error
 	profile.User.HasPassword = profile.HasPassword
 	return &profile.User, err

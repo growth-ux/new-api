@@ -14,14 +14,15 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
 	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm/clause"
 )
 
-// TestDM8PasswordLoginHTTP exercises the full password-login handler on a
-// case-sensitive DM8 instance. It only inserts and removes its own records.
+// TestDM8PasswordLoginHTTP exercises password login and password changes on a
+// case-sensitive DM8 instance. It only writes its own records.
 func TestDM8PasswordLoginHTTP(t *testing.T) {
 	dsn := os.Getenv("TEST_DM_DSN")
 	if dsn == "" {
@@ -98,18 +99,40 @@ func TestDM8PasswordLoginHTTP(t *testing.T) {
 	var response struct {
 		Success bool   `json:"success"`
 		Message string `json:"message"`
+		Data    struct {
+			AccessToken string `json:"access_token"`
+			User        struct {
+				HasPassword bool `json:"has_password"`
+			} `json:"user"`
+		} `json:"data"`
 	}
 	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response), recorder.Body.String())
 	require.True(t, response.Success, recorder.Body.String())
 	activeSessions, err := model.CountActiveUserSessions(user.Id, time.Now().Unix())
 	require.NoError(t, err)
 	require.EqualValues(t, 1, activeSessions, "password login must issue a session")
+	require.True(t, response.Data.User.HasPassword, "password login must report that a password is set")
+
+	identity, err := service.ParseAccessToken(response.Data.AccessToken)
+	require.NoError(t, err)
+	proof, err := service.VerifySecurityInput(identity, service.VerificationInput{
+		Scope:    service.VerificationScopePasswordChange,
+		Method:   service.VerificationMethodPassword,
+		Password: password,
+	})
+	require.NoError(t, err, "an account with a password must be able to verify its current password")
+	newPassword := "dm8-updated-password-123"
+	changeBody := fmt.Sprintf(`{"password":%q,"original_password":%q}`, newPassword, password)
+	changeRecorder := securityEnrollmentRequest(http.MethodPut, "/api/user/self", changeBody, proof.ProofToken, identity, UpdateSelf)
+	var changeResponse securityEnrollmentResponse
+	require.NoError(t, common.Unmarshal(changeRecorder.Body.Bytes(), &changeResponse))
+	require.True(t, changeResponse.Success, changeRecorder.Body.String())
 
 	twoFA := &model.TwoFA{UserId: user.Id, Secret: "JBSWY3DPEHPK3PXP", IsEnabled: true}
 	require.NoError(t, model.DB.Create(twoFA).Error)
 	t.Cleanup(func() { _ = model.DB.Unscoped().Delete(twoFA).Error })
 	challengeRecorder := httptest.NewRecorder()
-	challengeRequest := httptest.NewRequest(http.MethodPost, "/api/user/login", strings.NewReader(fmt.Sprintf(`{"username":%q,"password":%q}`, user.Username, password)))
+	challengeRequest := httptest.NewRequest(http.MethodPost, "/api/user/login", strings.NewReader(fmt.Sprintf(`{"username":%q,"password":%q}`, user.Username, newPassword)))
 	challengeRequest.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(challengeRecorder, challengeRequest)
 	var challengeResponse struct {
