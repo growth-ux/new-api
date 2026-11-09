@@ -1,0 +1,28 @@
+controller/dm8_login_integration_test.go
+  s_7434daba7838ed::t_5fae34d2d4e130 17,24-25,102-107,114-129,135
+model/user.go
+  s_7434daba7838ed::t_6eadda35374a7c 539-543,560
+model/login_verification.go
+  s_7434daba7838ed::t_6eadda35374a7c 42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6340be42948faf04a45d45c8b2f97b8f9e1e8b0",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_7434daba7838ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1be11-ec4d-76e3-85e6-cae297258881",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
