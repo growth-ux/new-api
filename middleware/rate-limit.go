@@ -120,14 +120,14 @@ func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark st
 		return
 	}
 	if !allowed {
-		writeRateLimited(c, ttlSeconds)
+		writeRateLimited(c, redisIPRateLimitKey(mark, c.ClientIP()), ttlSeconds)
 	}
 }
 
 func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark string) {
 	key := mark + c.ClientIP()
 	if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
-		writeRateLimited(c, duration)
+		writeRateLimited(c, key, duration)
 		return
 	}
 }
@@ -136,7 +136,9 @@ func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark s
 // clients can back off instead of treating the rejection as a fatal error.
 // The in-memory limiter cannot report the remaining window, so callers
 // without a TTL pass the full window duration as a conservative upper bound.
-func writeRateLimited(c *gin.Context, retryAfterSeconds int64) {
+func writeRateLimited(c *gin.Context, key string, retryAfterSeconds int64) {
+	logger.LogWarn(c.Request.Context(), "rate limit exceeded (key=%s): %s %s from %s, retry after %ds",
+		key, c.Request.Method, c.Request.URL.Path, c.ClientIP(), retryAfterSeconds)
 	if retryAfterSeconds > 0 {
 		c.Header("Retry-After", strconv.FormatInt(retryAfterSeconds, 10))
 	}
@@ -223,7 +225,7 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 		}
 		key := fmt.Sprintf("%s:user:%d", mark, userID)
 		if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
-			writeRateLimited(c, duration)
+			writeRateLimited(c, key, duration)
 			return
 		}
 	}
@@ -240,7 +242,7 @@ func userRedisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, key
 		return
 	}
 	if !allowed {
-		writeRateLimited(c, ttlSeconds)
+		writeRateLimited(c, key, ttlSeconds)
 	}
 }
 
