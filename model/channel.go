@@ -938,7 +938,7 @@ func GetPaginatedChannelTags(query *gorm.DB, offset int, limit int) ([]*string, 
 	var tags []*string
 	err := query.
 		Select("DISTINCT " + quoteModelIdentifier(query, "tag")).
-		Where(quoteModelIdentifier(query, "tag") + " is not null AND " + quoteModelIdentifier(query, "tag") + " != ''").
+		Where(nonEmptyTextCondition(query, "tag")).
 		Order(clause.OrderByColumn{Column: clause.Column{Name: "tag"}}).
 		Offset(offset).
 		Limit(limit).
@@ -976,7 +976,7 @@ func SearchTags(keyword string, group string, model string, idSort bool) ([]*str
 
 	subQuery := baseQuery.
 		Select("tag").
-		Where(quoteModelIdentifier(DB, "tag") + " != ''").
+		Where(nonEmptyTextCondition(baseQuery, "tag")).
 		Order(order)
 
 	err := DB.Table("(?) as sub", subQuery).
@@ -1157,7 +1157,7 @@ func CountAllTags() (int64, error) {
 
 func CountChannelTags(query *gorm.DB) (int64, error) {
 	var total int64
-	err := query.Where(quoteModelIdentifier(query, "tag") + " is not null AND " + quoteModelIdentifier(query, "tag") + " != ''").Distinct("tag").Count(&total).Error
+	err := query.Where(nonEmptyTextCondition(query, "tag")).Distinct("tag").Count(&total).Error
 	return total, err
 }
 

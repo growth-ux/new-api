@@ -25,7 +25,7 @@ func GetRankingQuotaTotals(startTime int64, endTime int64) ([]RankingQuotaTotal,
 	totalTokens := quoteModelIdentifier(DB, "total_tokens")
 	query := DB.Table("quota_data").
 		Select(fmt.Sprintf("%s, sum(%s) as %s", modelName, tokenUsed, totalTokens)).
-		Where(modelName + " <> ''").
+		Where(nonEmptyTextCondition(DB, "model_name")).
 		Group(modelName).
 		Having("sum(" + tokenUsed + ") > 0").
 		Order(totalTokens + " DESC")
@@ -46,7 +46,7 @@ func GetRankingQuotaBuckets(startTime int64, endTime int64, bucketSize int64) ([
 	tokens := quoteModelIdentifier(DB, "tokens")
 	query := DB.Table("quota_data").
 		Select(fmt.Sprintf("%s, %s as %s, sum(%s) as %s", modelName, bucketExpr, bucket, tokenUsed, tokens)).
-		Where(modelName + " <> ''").
+		Where(nonEmptyTextCondition(DB, "model_name")).
 		Group(fmt.Sprintf("%s, %s", modelName, bucketExpr)).
 		Having("sum(" + tokenUsed + ") > 0").
 		Order(bucket + " ASC")

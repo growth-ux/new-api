@@ -27,3 +27,12 @@ func quoteModelIdentifiers(db *gorm.DB, names ...string) string {
 	}
 	return strings.Join(quoted, ", ")
 }
+
+func nonEmptyTextCondition(db *gorm.DB, name string) string {
+	column := quoteModelIdentifier(db, name)
+	if db.Dialector.Name() == "dm" {
+		// In Oracle-compatible DM8, comparing against an empty string compares against NULL.
+		return "LENGTH(" + column + ") > 0"
+	}
+	return column + " <> ''"
+}

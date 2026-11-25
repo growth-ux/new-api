@@ -6,7 +6,7 @@ metadata:
   labels:
     app: ldw-new-api
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: ldw-new-api
@@ -15,7 +15,6 @@ spec:
       labels:
         app: ldw-new-api
     spec:
-      # 复用集群已有的 swr.cofco 拉取凭证（与 ldw-base-oss 同一个私有仓库），无需自己创建
       imagePullSecrets:
         - name: dockerimage-lzd
       containers:

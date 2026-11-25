@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // QuotaData 柱状图数据
@@ -39,12 +40,27 @@ type QuotaDataLogParams struct {
 	NodeName  string
 }
 
-func quotaDataIdentity(data *QuotaData) map[string]any {
-	return map[string]any{
+func quotaDataIdentityQuery(data *QuotaData) *gorm.DB {
+	identity := map[string]any{
 		"user_id": data.UserID, "username": data.Username, "model_name": data.ModelName,
 		"created_at": data.CreatedAt, "use_group": data.UseGroup, "token_id": data.TokenID,
 		"channel_id": data.ChannelID, "node_name": data.NodeName,
 	}
+	query := DB.Table("quota_data")
+	if DB.Dialector.Name() == "dm" {
+		// Oracle-compatible DM8 stores empty dimensions as NULL.
+		for _, name := range []string{"username", "model_name", "use_group", "node_name"} {
+			if identity[name] == "" {
+				column := clause.Column{Name: name}
+				query = query.Where(clause.Or(
+					clause.Eq{Column: column, Value: nil},
+					clause.Eq{Column: column, Value: ""},
+				))
+				delete(identity, name)
+			}
+		}
+	}
+	return query.Where(identity)
 }
 
 func quotaDataSummarySelect(dimensions ...string) string {
@@ -128,12 +144,9 @@ func SaveQuotaDataCache() {
 	// 3. 如果没有数据，就插入数据
 	for _, quotaData := range CacheQuotaData {
 		quotaDataDB := &QuotaData{}
-		DB.Table("quota_data").Where(quotaDataIdentity(quotaData)).First(quotaDataDB)
+		quotaDataIdentityQuery(quotaData).First(quotaDataDB)
 		if quotaDataDB.Id > 0 {
-			//quotaDataDB.Count += quotaData.Count
-			//quotaDataDB.Quota += quotaData.Quota
-			//DB.Table("quota_data").Save(quotaDataDB)
-			increaseQuotaData(quotaData)
+			increaseQuotaData(quotaDataDB.Id, quotaData)
 		} else {
 			DB.Table("quota_data").Create(quotaData)
 		}
@@ -142,9 +155,10 @@ func SaveQuotaDataCache() {
 	common.SysLog(fmt.Sprintf("保存数据看板数据成功，共保存%d条数据", size))
 }
 
-func increaseQuotaData(quotaData *QuotaData) {
+func increaseQuotaData(id int, quotaData *QuotaData) {
+	// A bucket can already have duplicate rows from older writes. Apply each increment once.
 	err := DB.Table("quota_data").
-		Where(quotaDataIdentity(quotaData)).
+		Where(clause.Eq{Column: clause.Column{Name: "id"}, Value: id}).
 		Updates(map[string]any{
 			"count":      gorm.Expr(quoteModelIdentifier(DB, "count")+" + ?", quotaData.Count),
 			"quota":      gorm.Expr(quoteModelIdentifier(DB, "quota")+" + ?", quotaData.Quota),

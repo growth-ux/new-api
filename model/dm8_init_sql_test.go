@@ -26,17 +26,10 @@ func resetDM8Schema(t *testing.T, db *gorm.DB) {
 // replacing only its production schema qualifier.
 func applyDM8InitSQL(t *testing.T, db *gorm.DB, section string) {
 	t.Helper()
-	var schema string
-	require.NoError(t, db.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&schema).Error)
-	require.True(t, strings.HasPrefix(schema, "NEWAPI_TEST_"), "test schema %q must use the NEWAPI_TEST_ prefix", schema)
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	sqlFile := filepath.Join(filepath.Dir(file), "..", "database", "dm8", "init.sql")
-	contents, err := os.ReadFile(sqlFile)
-	require.NoError(t, err)
+	contents := readDM8TestSQL(t, db, "init.sql")
 	var selected []string
 	inLog := false
-	for _, line := range strings.Split(string(contents), "\n") {
+	for _, line := range strings.Split(contents, "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch trimmed {
 		case dm8LogSectionBegin:
@@ -50,7 +43,7 @@ func applyDM8InitSQL(t *testing.T, db *gorm.DB, section string) {
 			continue
 		}
 		if section == "all" || section == "log" && inLog {
-			selected = append(selected, strings.ReplaceAll(line, `"LDW_AI_AGG".`, dm8QuoteIdent(schema)+"."))
+			selected = append(selected, line)
 		}
 	}
 	require.Contains(t, []string{"all", "log"}, section)
@@ -61,6 +54,50 @@ func applyDM8InitSQL(t *testing.T, db *gorm.DB, section string) {
 		}
 		require.NoError(t, db.Exec(statement).Error, "init.sql statement: %s", statement)
 	}
+}
+
+func readDM8TestSQL(t *testing.T, db *gorm.DB, name string) string {
+	t.Helper()
+	var schema string
+	require.NoError(t, db.Raw("SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') FROM DUAL").Scan(&schema).Error)
+	require.True(t, strings.HasPrefix(schema, "NEWAPI_TEST_"), "test schema %q must use the NEWAPI_TEST_ prefix", schema)
+	_, file, _, ok := runtime.Caller(0)
+	require.True(t, ok)
+	sqlFile := filepath.Join(filepath.Dir(file), "..", "database", "dm8", name)
+	contents, err := os.ReadFile(sqlFile)
+	require.NoError(t, err)
+	return strings.ReplaceAll(string(contents), `"LDW_AI_AGG".`, dm8QuoteIdent(schema)+".")
+}
+
+func TestDM8AllowNullUserPasswordUpgrade(t *testing.T) {
+	db := openDM8TestDB(t)
+	saveDM8Globals(t, db)
+	resetDM8Schema(t, db)
+	require.NoError(t, db.Exec(`ALTER TABLE "users" MODIFY ("password" NOT NULL)`).Error)
+	existing := User{Username: "dm8-existing-user", Password: "existing-password-123"}
+	require.NoError(t, existing.Insert(0))
+
+	upgrade := readDM8TestSQL(t, db, "allow-null-user-password.sql")
+	for range 2 {
+		require.NoError(t, db.Exec(upgrade).Error)
+	}
+
+	login := User{Username: existing.Username, Password: "existing-password-123"}
+	require.NoError(t, login.ValidateAndFill())
+	require.Equal(t, existing.Id, login.Id)
+
+	passwordless := User{Username: "dm8-oauth-user"}
+	require.NoError(t, db.Transaction(func(tx *gorm.DB) error {
+		return passwordless.InsertWithTx(tx, 0)
+	}))
+	stored, err := GetUserById(passwordless.Id, true)
+	require.NoError(t, err)
+	require.Empty(t, stored.Password)
+	profile, err := GetSelfUserById(passwordless.Id)
+	require.NoError(t, err)
+	require.False(t, profile.HasPassword)
+	login = User{Username: passwordless.Username, Password: "invalid-password"}
+	require.Error(t, login.ValidateAndFill())
 }
 
 func TestDM8InitSQLComplete(t *testing.T) {

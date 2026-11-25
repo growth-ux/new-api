@@ -455,8 +455,9 @@ func downgradeUserGroupForSubscriptionTx(tx *gorm.DB, sub *UserSubscription, now
 	}
 	// If another active upgraded subscription exists, keep the current group.
 	var activeSub UserSubscription
-	activeQuery := tx.Where(subscriptionColumn("user_id")+" = ? AND "+subscriptionColumn("status")+" = ? AND "+subscriptionColumn("end_time")+" > ? AND "+subscriptionColumn("id")+" <> ? AND "+subscriptionColumn("upgrade_group")+" <> ''",
+	activeQuery := tx.Where(subscriptionColumn("user_id")+" = ? AND "+subscriptionColumn("status")+" = ? AND "+subscriptionColumn("end_time")+" > ? AND "+subscriptionColumn("id")+" <> ?",
 		sub.UserId, "active", now, sub.Id).
+		Where(nonEmptyTextCondition(tx, "upgrade_group")).
 		Order(subscriptionColumn("end_time") + " desc, " + subscriptionColumn("id") + " desc").
 		Limit(1).
 		Find(&activeSub)
@@ -1180,8 +1181,9 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 
 			// If there's an active upgraded subscription, keep current group.
 			var activeSub UserSubscription
-			activeQuery := tx.Where(subscriptionColumn("user_id")+" = ? AND "+subscriptionColumn("status")+" = ? AND "+subscriptionColumn("end_time")+" > ? AND "+subscriptionColumn("upgrade_group")+" <> ''",
+			activeQuery := tx.Where(subscriptionColumn("user_id")+" = ? AND "+subscriptionColumn("status")+" = ? AND "+subscriptionColumn("end_time")+" > ?",
 				userId, "active", now).
+				Where(nonEmptyTextCondition(tx, "upgrade_group")).
 				Order(subscriptionColumn("end_time") + " desc, " + subscriptionColumn("id") + " desc").
 				Limit(1).
 				Find(&activeSub)
@@ -1192,8 +1194,9 @@ func ExpireDueSubscriptions(limit int) (int, error) {
 			// Find the most recently expired subscription that defines a group transition
 			// (an explicit downgrade target or an upgrade snapshot to revert).
 			var lastExpired UserSubscription
-			expiredQuery := tx.Where(subscriptionColumn("user_id")+" = ? AND "+subscriptionColumn("status")+" = ? AND ("+subscriptionColumn("downgrade_group")+" <> '' OR "+subscriptionColumn("upgrade_group")+" <> '')",
+			expiredQuery := tx.Where(subscriptionColumn("user_id")+" = ? AND "+subscriptionColumn("status")+" = ?",
 				userId, "expired").
+				Where("(" + nonEmptyTextCondition(tx, "downgrade_group") + " OR " + nonEmptyTextCondition(tx, "upgrade_group") + ")").
 				Order(subscriptionColumn("end_time") + " desc, " + subscriptionColumn("id") + " desc").
 				Limit(1).
 				Find(&lastExpired)

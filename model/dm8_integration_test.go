@@ -234,12 +234,18 @@ func TestDM8AbilityChannelSelection(t *testing.T) {
 	byTag, err := GetChannelsByTag(tag, false, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, byTag)
+	emptyTag := ""
+	require.NoError(t, db.Create(&Channel{Name: channel.Name, Key: "test-key", Models: channel.Models, Group: channel.Group, Tag: &emptyTag}).Error)
+	require.NoError(t, db.Create(&Channel{Name: channel.Name, Key: "test-key", Models: channel.Models, Group: channel.Group}).Error)
 	tags, err := GetPaginatedTags(0, 10)
 	require.NoError(t, err)
-	require.NotEmpty(t, tags)
+	require.Equal(t, []*string{&tag}, tags)
 	searchedTags, err := SearchTags("dm8-case-channel", "default", "dm8-case-model", false)
 	require.NoError(t, err)
-	require.NotEmpty(t, searchedTags)
+	require.Equal(t, []*string{&tag}, searchedTags)
+	tagCount, err := CountAllTags()
+	require.NoError(t, err)
+	require.EqualValues(t, 1, tagCount)
 	byType, err := GetChannelsByType(0, 10, false, channel.Type)
 	require.NoError(t, err)
 	require.NotEmpty(t, byType)
@@ -410,6 +416,69 @@ func TestDM8SubscriptionQueries(t *testing.T) {
 	require.NoError(t, RefundSubscriptionPreConsume("dm8-case-preconsume"))
 }
 
+func TestDM8SubscriptionGroupTransitions(t *testing.T) {
+	db := openDM8TestDB(t)
+	saveDM8Globals(t, db)
+	resetDM8Schema(t, db)
+	now := GetDBTimestamp()
+
+	for i, tc := range []struct {
+		name, action, downgrade, wantGroup string
+		keepActive                         bool
+	}{
+		{name: "expire and revert", action: "expire", wantGroup: "default"},
+		{name: "expire with explicit target", action: "expire", downgrade: "basic", wantGroup: "basic"},
+		{name: "expire with active upgrade", action: "expire", keepActive: true, wantGroup: "pro"},
+		{name: "cancel with active upgrade", action: "cancel", keepActive: true, wantGroup: "pro"},
+		{name: "delete with active upgrade", action: "delete", keepActive: true, wantGroup: "pro"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			user := User{Username: tc.name, Password: "unused", Group: "pro", AffCode: fmt.Sprintf("dm8-sub-%d", i)}
+			require.NoError(t, db.Create(&user).Error)
+			sub := UserSubscription{UserId: user.Id, Status: "active", EndTime: now + 3600, PrevUserGroup: "default", UpgradeGroup: "pro", DowngradeGroup: tc.downgrade}
+			if tc.downgrade != "" {
+				sub.UpgradeGroup = ""
+			}
+			if tc.action == "expire" {
+				sub.EndTime = now - 60
+			}
+			require.NoError(t, db.Create(&sub).Error)
+			if tc.keepActive {
+				other := UserSubscription{UserId: user.Id, Status: "active", EndTime: now + 7200, UpgradeGroup: "pro"}
+				require.NoError(t, db.Create(&other).Error)
+			}
+
+			switch tc.action {
+			case "expire":
+				count, err := ExpireDueSubscriptions(10)
+				require.NoError(t, err)
+				require.Equal(t, 1, count)
+			case "cancel":
+				_, err := AdminInvalidateUserSubscription(sub.Id)
+				require.NoError(t, err)
+			case "delete":
+				_, err := AdminDeleteUserSubscription(sub.Id)
+				require.NoError(t, err)
+			}
+			require.NoError(t, db.First(&user, user.Id).Error)
+			require.Equal(t, tc.wantGroup, user.Group)
+		})
+	}
+}
+
+func TestDM8ModelPricingConversionChecksVideoEndpoint(t *testing.T) {
+	db := openDM8TestDB(t)
+	saveDM8Globals(t, db)
+	resetDM8Schema(t, db)
+
+	entry := Model{ModelName: "dm8-special-route", Endpoints: `{"openai-video":"/v1/videos"}`}
+	require.NoError(t, db.Create(&entry).Error)
+	preview, err := PreviewModelPricingConversion(entry.ModelName, PricingValues{"ModelPrice": 1.0})
+	require.NoError(t, err)
+	require.Contains(t, preview.UnsupportedReason, "Video pricing")
+	require.Empty(t, preview.Expression)
+}
+
 func TestDM8AuthFlowLifecycle(t *testing.T) {
 	db := openDM8TestDB(t)
 	saveDM8Globals(t, db)
@@ -561,6 +630,10 @@ func TestDM8QuotaDashboardCaseSensitive(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, rankingBuckets, RankingQuotaBucket{ModelName: modelName, Bucket: bucket, Tokens: 4})
 
+	duplicate := *row
+	duplicate.Id = 0
+	require.NoError(t, tx.Create(&duplicate).Error)
+
 	CacheQuotaDataLock.Lock()
 	previousCache := CacheQuotaData
 	CacheQuotaData = make(map[string]*QuotaData)
@@ -578,6 +651,10 @@ func TestDM8QuotaDashboardCaseSensitive(t *testing.T) {
 	require.Equal(t, 3, reloaded.Count)
 	require.Equal(t, 15, reloaded.Quota)
 	require.Equal(t, 7, reloaded.TokenUsed)
+	require.NoError(t, tx.First(&duplicate, duplicate.Id).Error)
+	require.Equal(t, 2, duplicate.Count)
+	require.Equal(t, 10, duplicate.Quota)
+	require.Equal(t, 4, duplicate.TokenUsed)
 }
 
 func TestDM8AsyncTaskQueriesCaseSensitive(t *testing.T) {

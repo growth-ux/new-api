@@ -121,7 +121,7 @@ func releaseAllExternalIdentitiesWithTx(tx *gorm.DB, userId int) error {
 func InitializeExternalIdentityClaims() error {
 	var users []User
 	if err := DB.Unscoped().Select("id", "telegram_id").
-		Where(clause.Neq{Column: clause.Column{Name: "telegram_id"}, Value: ""}).Find(&users).Error; err != nil {
+		Where(nonEmptyTextCondition(DB, "telegram_id")).Find(&users).Error; err != nil {
 		return err
 	}
 	return DB.Transaction(func(tx *gorm.DB) error {

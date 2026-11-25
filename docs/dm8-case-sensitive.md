@@ -8,13 +8,20 @@
 
 ```sql
 SELECT CASE_SENSITIVE();
+SELECT PARA_VALUE FROM V$DM_INI WHERE PARA_NAME = 'COMPATIBLE_MODE';
 ```
 
-返回值必须是 `1`。[init.sql](../database/dm8/init.sql) 中的对象名固定指定 `LDW_AI_AGG`，生产环境先创建该用户及同名 schema，再由部署账号执行 SQL；不能将原文件直接用于其他 schema。集成测试使用以 `NEWAPI_TEST_` 开头的隔离 schema，测试辅助仅在测试进程中把目标 schema 替换为该测试 schema。
+第一条查询应返回 `1`。线上第二条查询返回 `2`，该模式将空字符串按 `NULL` 处理。复现线上 SQL 行为时，本地实例也应使用该模式。
+
+[init.sql](../database/dm8/init.sql) 中的对象名固定指定 `LDW_AI_AGG`，生产环境先创建该用户及同名 schema，再由部署账号执行 SQL。集成测试使用以 `NEWAPI_TEST_` 开头的隔离 schema，测试辅助仅在测试进程中把目标 schema 替换为该测试 schema。
 
 部署账号需要创建表和索引的权限。应用运行账号按正常业务读写授予对象权限，不需要为启动迁移授予 `SELECT ANY DICTIONARY` 或建改表权限。驱动探针等明确要创建临时表的测试仍使用有相应权限的独立测试账号。本地旧测试账号 `NEWAPI_TEST_CASE1` 曾用于自动迁移验证，因此本次另建低权限账号做运行验证。
 
 连接仍会检查 Ping 和当前 schema，启动不再预检 `SYS.SYSOBJECTS`。本地低权限验证确认运行账号没有 `SELECT ANY DICTIONARY`，无法创建表，仍可在预建表上完成启动和必要的业务读写。
+
+## 已有主库升级
+
+部署前由具备改表权限的账号在主库执行 [allow-null-user-password.sql](../database/dm8/allow-null-user-password.sql)。脚本允许仅使用第三方登录的用户将 `users.password` 留空，保留已有密码哈希。新建库直接使用更新后的 `init.sql`。
 
 ## 回归验证
 
