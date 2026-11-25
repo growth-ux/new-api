@@ -1,0 +1,80 @@
+xc_env/prod.yaml
+  s_1d2588b580c08d::t_c04fde39bdbab2 9
+aliyun_env/online/prod.yaml
+  s_1d2588b580c08d::t_c04fde39bdbab2 9
+aliyun_env/online/stg.yaml
+  s_1d2588b580c08d::t_c04fde39bdbab2 9
+aliyun_env/stg.yaml
+  s_1d2588b580c08d::t_c04fde39bdbab2 9
+model/usedata.go
+  s_900b5c57d556f9::t_dca6ea20a3e766 11,43-44,49-63,147,149,158-159,161
+model/usedata_rankings.go
+  s_900b5c57d556f9::t_2c27272560de20 28,49
+docs/dm8-case-sensitive.md
+  s_900b5c57d556f9::t_fb0dd9eed7d4c2 14-16
+  s_900b5c57d556f9::t_be49ced87b0734 11,22-24
+  s_900b5c57d556f9::t_206cd3b5150c5c 25
+xc_env/stg.yaml
+  s_1d2588b580c08d::t_c04fde39bdbab2 9
+model/dm8_integration_test.go
+  s_900b5c57d556f9::t_f72054a0208ac8 237-239,242,245-248,419-424,426,428-435,437-438,442-480
+  s_900b5c57d556f9::t_690f48bdca9747 439-441
+  s_900b5c57d556f9::t_dca6ea20a3e766 425,436,633-636,654-657
+  s_900b5c57d556f9::t_d9e9dcfede1775 427
+  s_900b5c57d556f9::t_b351a419c2436f 481
+model/usedata_flow.go
+  s_900b5c57d556f9::t_2c27272560de20 38
+model/model_pricing_conversion.go
+  s_900b5c57d556f9::t_2c27272560de20 245
+model/subscription.go
+  s_900b5c57d556f9::t_d9e9dcfede1775 1199
+  s_900b5c57d556f9::t_2c27272560de20 458,460,1184,1186,1197
+aliyun_env/prod.yaml
+  s_1d2588b580c08d::t_c04fde39bdbab2 10
+model/external_identity_claim.go
+  s_900b5c57d556f9::t_2c27272560de20 124
+model/dm8_init_sql_test.go
+  s_900b5c57d556f9::t_50ca897f7122b3 29,32,46,59-101
+  s_900b5c57d556f9::t_9ba1e85bf6e556 102
+model/channel.go
+  s_900b5c57d556f9::t_2c27272560de20 941,979,1160
+web/src/features/dashboard/constants.ts
+  s_1d2588b580c08d::t_d3f552cde2214a 30
+model/sql_identifier.go
+  s_900b5c57d556f9::t_2c27272560de20 30-38
+database/dm8/init.sql
+  s_900b5c57d556f9::t_db22cf0b46153e 19
+database/dm8/allow-null-user-password.sql
+  s_900b5c57d556f9::t_be49ced87b0734 1
+web/src/features/dashboard/lib/__tests__/filters.test.ts
+  s_1d2588b580c08d::t_7d1512aa2fba83 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8bd870b90338047d0da6a39b8a8f55f449ecb91c",
+  "prompts": {},
+  "humans": {
+    "h_f75b2dd43abf29": {
+      "author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_1d2588b580c08d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20c5d-3677-7471-a419-e72f36a53f07",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    },
+    "s_900b5c57d556f9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ce7e-ecdd-74d2-9c06-f282cc3bd2ef",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "weiyu.1024 <1360055716@qq.com>"
+    }
+  }
+}
